@@ -40,6 +40,9 @@ releases the spring, so there is nothing to trip and nothing to wear.
    is squeezed by 4 mm.
 3. When the cam's cliff passes the nose, the spring snaps the lever up. Its tip
    (under the tower, at the centre) hits the bottom of the **piston** flange.
+   The nose has a vertical back face and the lever top is cut down around it,
+   so nothing on the lever can drag on the cam corner: the lever is free within
+   ~4° of cam turn, and the spring alone sets the launch speed.
 4. The piston jumps 3 mm, coasts 4 more and stops on bumpers under the **tower
    lip**. The capsule on top keeps going up the tube and out of the hatch.
 5. The motor keeps turning, the cam picks the lever up again (re-cocks) and

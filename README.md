@@ -20,6 +20,15 @@ when you bonk it from below**, with a coin chime and an LED flash.
 * **Parametric CAD as code** (Python / build123d) with tests that prove the
   parts fit and the ball's path is clear.
 
+![Hit it](images/renders/hit.gif)
+
+**Interactive 3D viewer** (orbit, exploded build, cut-away launcher): [`docs/viewer/`](docs/viewer/).
+Run `python -m http.server -d docs/viewer` and open http://localhost:8000.
+
+| Inside, ¼ speed | The build |
+|---|---|
+| ![inside](images/renders/inside.gif) | ![build](images/renders/build.gif) |
+
 | Cocked (waiting) | Fired |
 |---|---|
 | ![launcher cocked](images/renders/launcher_cocked.png) | ![launcher fired](images/renders/launcher_fired.png) |

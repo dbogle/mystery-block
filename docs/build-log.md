@@ -21,6 +21,7 @@ time something is printed, changed, broken or learned, with a photo filename.
 | D12 | 2026-11-18 | **MIT licence** | Simple and permissive for code and models | CERN-OHL, CC BY-SA |
 | D13 | 2026-11-19 | **Motorized spring launch**: N20 motor + snail cam cocks a spring lever; hit panel becomes a sensor | With the mechanical launch, pop height depended on how hard a kid hit it (too soft = nothing, too hard = capsule across the room). Spring energy is the same every time. Cam both cocks and releases, so no latch to tune | Keep mechanical (simplest, inconsistent), solenoid (needs 12 V, marginal energy) |
 | D14 | 2026-11-19 | **Idle cocked**, cam parked by a magnet + second SS49E | Hit-to-launch in ~0.1 s instead of a full motor turn; no limit switch to wear | Fire from rest (≈ 1 s delay), microswitch homing |
+| D15 | 2026-11-19 | **Relieved lever top + one-sided follower nose** | Simulation showed the cam's drop corner dragging on the lever's flat top after the drop, so the spring released over ~30° of cam turn (~100 ms) and the launch would have been weak. With a 3 mm relief around the nose and a vertical back face on the nose, release takes ~4° (~13 ms). New test guards it | Raise the cam (no room under the hopper), smaller nose (still slow) |
 
 ## Timeline
 
@@ -29,6 +30,7 @@ time something is printed, changed, broken or learned, with a photo filename.
 | 2026-11-18 | Project kicked off. Architecture chosen, BOM sent for ordering (deadline **Dec 13**) | |
 | 2026-11-18 | v1 CAD, firmware, sounds, docs in the repo. All fit/interference tests pass in CI | `images/renders/*` |
 | 2026-11-19 | v2: switched to a motorized spring launch (D13). New tower, lever and cam; firmware drives the motor | `images/renders/launcher_*.png` |
+| 2026-11-19 | Fixed a slow-release flaw in the lever (D15). Added the interactive 3D viewer and animations | `images/renders/*.gif` |
 | | _Parts ordered_ | |
 | | _First wall panel printed (check "?" colours)_ | `photos/..` |
 | | _Launcher test print (tower + lever + cam + piston): does the spring pop the piston?_ | |
