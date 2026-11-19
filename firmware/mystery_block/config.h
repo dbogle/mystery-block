@@ -11,7 +11,8 @@
 #define PIN_LEDS        6    // WS2812 data, through a 330 ohm resistor
 #define PIN_MOTOR_A     5    // MX1508 / DRV8833 IN1
 #define PIN_MOTOR_B     9    // MX1508 / DRV8833 IN2
-#define PIN_CAM_HALL    A1   // second SS49E, next to the cam (sees its magnet)
+#define PIN_LIFT_BOTTOM A1   // SS49E on the belt housing: car is down
+#define PIN_LIFT_TOP    A2   // SS49E on the belt housing: car is up
 
 // ---- Hit detection ----------------------------------------------------------
 // The hit panel carries a magnet. When the panel is bonked it jumps up toward
@@ -23,14 +24,16 @@
 #define HIT_REFRACTORY  250   // ms ignored after a hit (panel bounce)
 #define DEBUG_HALL      0     // 1 = stream raw/baseline readings at 20 Hz
 
-// ---- Launcher (N20 gear motor + snail cam) ------------------------------------
-#define MOTOR_REVERSE   0     // set to 1 if the cam turns the wrong way (it
-                              // stalls against the drop and reports FAULT)
-#define MOTOR_SPEED     255   // PWM 0..255
-#define CAM_ON_DELTA    120   // counts from 512 that mean "magnet at sensor"
-#define CAM_OFF_DELTA   60    // ... and "magnet gone" (hysteresis)
-#define LAUNCH_TIMEOUT  3000  // ms per step before giving up (jam protection)
-#define DEBUG_CAM       0     // 1 = stream cam sensor readings
+// ---- Lift (N20 gear motor + GT2 belt) ------------------------------------------
+#define MOTOR_REVERSE   0     // set to 1 if "up" drives the car down (it then
+                              // homes the wrong way and reports FAULT)
+#define MOTOR_SPEED     255   // PWM 0..255 going up
+#define MOTOR_SPEED_DOWN 200  // a little gentler coming down
+#define LIFT_ON_DELTA   120   // counts from 512 that mean "magnet at sensor"
+#define LIFT_OFF_DELTA  60    // ... and "magnet gone" (hysteresis)
+#define LIFT_HOLD_MS    8000  // how long the capsule waits on top of the lid
+#define LIFT_TIMEOUT    5000  // ms per move before giving up (jam protection)
+#define DEBUG_LIFT      0     // 1 = stream lift sensor readings
 
 // ---- Sound (DFPlayer Mini) ---------------------------------------------------
 // microSD layout:  /01/001.wav coin   /01/002.wav bonus   /01/003.wav startup

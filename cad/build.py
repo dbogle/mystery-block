@@ -12,7 +12,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from build123d import Box, Mesher, Pos, Rot, export_stl  # noqa: E402
+from build123d import Box, Mesher, Pos, export_stl  # noqa: E402
 
 import model as m  # noqa: E402
 from params import S, RIVET_U, RIVET_Z  # noqa: E402
@@ -90,26 +90,25 @@ def renders():
                 out.append((cut, col[k]))
         return out
 
-    # 4./5. section through the ball path (x = 0 plane), cocked and fired
+    # 4./5. section through the capsule path and the belt (x = 0 plane)
     keep_x = Pos(S / 2, 0, S / 2) * Box(S, S * 2, S * 2)
     render(section(asm, keep_x), IMG / "section.png", elev=8, azim=-170,
-           title="Section: ball waits on the piston (cocked)")
-    asm_fired = m.assembly(state="fired")
-    render(section(asm_fired, keep_x), IMG / "section_hit.png", elev=8, azim=-170,
-           title="Section: lever has struck the piston (fired)")
+           title="Section: capsule waits in the lift car (down)")
+    asm_up = m.assembly(lift="up")
+    render(section(asm_up, keep_x), IMG / "section_up.png", elev=8, azim=-170,
+           title="Section: car up, capsule out of the lid")
 
-    # 6./7. launcher close-ups (y = 0 plane, looking from the front)
-    keep_y = Pos(0, S / 2, S / 2) * Box(S * 2, S, S * 2)
+    # 6./7. lift close-ups: walls, hopper and collar hidden, seen from +X
     hide_walls = {n for n, *_ in asm if n.startswith(("panel_", "glyph_", "shadow_"))}
     hide_walls |= {"lid", "hopper", "led_collar"}
-    for st, fname, title in (("cocked", "launcher_cocked.png", "Launcher cocked: cam holds the lever down"),
-                             ("fired", "launcher_fired.png", "Launcher fired: spring snapped the lever up")):
-        parts = [p for p in m.assembly(state=st) if p[0] not in hide_walls]
-        render(section(parts, keep_y), IMG / fname, elev=5, azim=-90, title=title)
+    for st, fname, title in (("down", "lift_down.png", "Lift down: capsule rolls into the car"),
+                             ("up", "lift_up.png", "Lift up: belt has raised the car 75 mm")):
+        parts = [p for p in m.assembly(lift=st) if p[0] not in hide_walls]
+        render(section(parts, keep_x), IMG / fname, elev=10, azim=-150, title=title)
 
     # 6. exploded view
-    offs = {"hit_panel": -60, "chassis": 0, "motor": 0, "lever": 0, "cam": 0,
-            "tower": 35, "piston": 70, "tube": 110, "hopper": 150,
+    offs = {"hit_panel": -60, "chassis": 0, "motor": 0, "pulleys": 0, "belt": 0,
+            "car": 45, "housing": 80, "tube": 110, "hopper": 150,
             "led_collar": 210, "lid": 280}
     ex = []
     for n, s, k, _ in asm:

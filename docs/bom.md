@@ -9,8 +9,9 @@ well-reviewed listing that matches the spec column. Specs are what matter.
 
 ## 1. Electronics
 
-A hit is sensed by a Hall sensor and the launch is driven by a small gear motor,
-so every pop is the same height no matter how hard (or softly) the block is hit.
+A hit is sensed by a Hall sensor, and a small gear motor drives a belt that lifts
+the capsule up out of the lid, the same way every time no matter how hard (or
+softly) the block is hit.
 
 | Qty | Part | Spec that matters | Approx. | Link |
 |---:|---|---|---:|---|
@@ -18,8 +19,8 @@ so every pop is the same height no matter how hard (or softly) the block is hit.
 | 1 | DFPlayer Mini MP3 module | DFRobot DFR0299 or clone (YX5200/MH2024K chip) | $8 / 2-5 | [search](https://www.amazon.com/s?k=dfplayer+mini+mp3+module) |
 | 1 | microSD card | 1-32 GB, FAT32 | $5 | any |
 | 1 | Speaker | **40 mm round, 4-8 Ω, 3 W**, ≤ 6 mm deep | $8 / 2-4 | [search](https://www.amazon.com/s?k=40mm+speaker+4+ohm+3w) |
-| 2 | Linear Hall sensor | **SS49E** (aka 49E / AH49E), TO-92. One for the hit panel, one for the cam position | $6 / 10 | [search](https://www.amazon.com/s?k=ss49e+linear+hall+sensor) |
-| 1 | Gear motor | **N20, 6 V, 40-60 RPM** (50 RPM ideal), metal gearbox, **3 mm D-shaft**. Runs on 5 V | $10 / 2 | [search](https://www.amazon.com/s?k=n20+gear+motor+6v+50rpm) |
+| 3 | Linear Hall sensor | **SS49E** (aka 49E / AH49E), TO-92. One for the hit panel, two for the lift (bottom + top) | $6 / 10 | [search](https://www.amazon.com/s?k=ss49e+linear+hall+sensor) |
+| 1 | Gear motor | **N20, 6 V, 50-100 RPM**, metal gearbox, **3 mm D-shaft**. Runs on 5 V. 50 RPM lifts in ~2.3 s, 100 RPM in ~1.2 s | $10 / 2 | [search](https://www.amazon.com/s?k=n20+gear+motor+6v+50rpm) |
 | 1 | Motor driver | **MX1508** dual H-bridge board (or DRV8833). Only one channel is used | $8 / 5 | [search](https://www.amazon.com/s?k=mx1508+motor+driver) |
 | 1 | Capacitor | 100 nF ceramic, soldered across the motor terminals (noise) | kit | [search](https://www.amazon.com/s?k=ceramic+capacitor+assortment) |
 | 1 | WS2812B LED ring | **24 LEDs, ~66 mm OD / ~52 mm ID** (Adafruit #1586 or clone) | $8-15 | [search](https://www.amazon.com/s?k=ws2812b+24+led+ring) |
@@ -38,16 +39,18 @@ so every pop is the same height no matter how hard (or softly) the block is hit.
 | 16 | Heat-set inserts | **M3**, short (≈ 4-5.7 mm long, ≈ 4.5 mm OD). Holes are 4.0 mm | $10 / kit | [search](https://www.amazon.com/s?k=m3+heat+set+inserts+kit) |
 | 4 | Heat-set inserts | **M4** (≈ 5.6-6 mm OD, ≤ 8 mm long). Holes are 5.6 mm | (same kit) | ↑ get a kit with M3 + M4 |
 | 16 | Screws | **M3 × 8 button head** (ISO 7380) | $8 / kit | [search](https://www.amazon.com/s?k=m3+button+head+screw+assortment) |
-| 3 | Screws | **M3 × 20** button or socket head (launcher tower to deck) | (same kit) | ↑ get a kit with 8-30 mm lengths |
-| 1 | Screw | **M3 × 30** socket head (lever axle) | (same kit) | ↑ |
-| 4 | Nuts | **M3 nyloc** (3 tower + 1 axle) | (same kit) | ↑ |
-| 1 | Compression spring | **Free length 16-20 mm, OD 8-11 mm, wire 0.9-1.0 mm** (≈ 2-5 N/mm). Must close to ≤ 9.5 mm. Buy an assortment and try two | $8 / kit | [search](https://www.amazon.com/s?k=small+compression+spring+assortment+stainless) |
+| 2 | Screws | **M3 × 8** (same as above): belt housing to deck, from underneath | (same kit) | ↑ so 18 in total |
+| 1 | Screw | **M3 × 25** socket head (idler axle) | (same kit) | ↑ get a kit with 8-30 mm lengths |
+| 1 | Screw | **M3 × 12** (belt clamp pinch screw, self-taps into the clamp) | (same kit) | ↑ |
+| 1 | Nut | **M3 nyloc** (idler axle) | (same kit) | ↑ |
+| 1 | Timing belt | **GT2, 6 mm wide, open** (cut to length, ≈ 26 cm used). Usually sold as 5 m rolls | $8 | [search](https://www.amazon.com/s?k=gt2+timing+belt+6mm+open) |
+| 1 | Pulley | **GT2 20 tooth, 3 mm bore, 6 mm belt**, with set screws (fits the N20 D-shaft) | $8 / 5 | [search](https://www.amazon.com/s?k=gt2+20+tooth+pulley+3mm+bore) |
+| 1 | Idler | **GT2 20 tooth toothless idler, 3 mm bore, 6 mm belt** (flanged, with bearings) | $8 / 5 | [search](https://www.amazon.com/s?k=gt2+toothless+idler+3mm+bore) |
 | 2 | Zip ties | small, ≤ 3.5 mm wide (holds the motor in its cradle) | – | any |
 | 4 | Screws | **M4 × 30 button head** (ISO 7380) | (same kit) | ↑ get a kit with M3 + M4 |
 | 4 | Washers | **M4 fender / penny washer, 12 mm OD, ~1 mm thick** | $6 / kit | [search](https://www.amazon.com/s?k=m4+fender+washer+12mm) |
-| 10 | Magnets | **6 × 3 mm** neodymium discs (8 for the lid, 1 for the hit sensor, 1 in the cam) | $8 / 50 | [search](https://www.amazon.com/s?k=6x3mm+neodymium+magnets) |
+| 10 | Magnets | **6 × 3 mm** neodymium discs (8 for the lid, 1 for the hit sensor, 1 in the belt clamp) | $8 / 50 | [search](https://www.amazon.com/s?k=6x3mm+neodymium+magnets) |
 | 4 | O-rings | **8 mm ID × 2 mm** cross-section (nitrile kit) | $8 / kit | [search](https://www.amazon.com/s?k=o+ring+assortment+kit+nitrile) |
-| 4 | Felt or silicone bumper dots | **6 mm round, ~2 mm thick**, self-adhesive (3 under the tower lip where the piston stops, 1 on the lever slot roof) | $6 | [search](https://www.amazon.com/s?k=6mm+self+adhesive+bumper+pads) |
 | 2 | Wall screws + anchors | #8 / 4 mm wood screws or drywall anchors (only for wall mounting) | – | any |
 
 ## 3. Payload (pick one or mix)

@@ -10,7 +10,7 @@ the right orientation. Total ~1 kg of PLA and roughly 40-45 h of printer time.
 | 1 | Yellow / gold (body) | walls, lid, hit panel |
 | 2 | White (or translucent white if you want the "?" to glow) | "?" glyphs |
 | 3 | Dark brown / black | glyph shadow, rivet caps |
-| 4 | Grey / any (internals) | chassis, tower, lever, cam, hopper, piston, sleeves, collar |
+| 4 | Grey / any (internals) | chassis, car, belt housing, hopper, sleeves, collar |
 
 The tube looks great in **translucent PLA/PETG**: the LED ring lights it up and
 you can see the ball fly.
@@ -41,13 +41,11 @@ Defaults: PLA, 0.20 mm layers, 3 walls, 15 % gyroid infill, no supports.
 | `panel_right` | 1 | same | 1+2+3 | 3.5 h |
 | `lid` | 1 | textured PEI, face down | 1 | 3 h |
 | `hit_panel` | 1 | textured face down (as exported). 4 walls for stiffness | 1 | 3.5 h |
-| `chassis` | 1 | as exported. 20 % infill (inserts go in here). Tree supports **only** under the lever axle posts' holes if your slicer asks | 4 | 6.5 h |
+| `chassis` | 1 | as exported. 20 % infill (inserts go in here). No supports | 4 | 6.5 h |
 | `hopper` | 1 | as exported. **10 %** infill is plenty, 4 top layers on the funnel | 4 | 8 h |
 | `tube` | 1 | upright, **brim 5 mm**, 3 walls. Slow outer wall for a smooth bore | 4 or translucent | 2 h |
-| `tower` | 1 | as exported (upside down, lip on the plate). 4 walls, 30 % infill | 4 | 2 h |
-| `lever` | 1 | as exported (on its side). **5 walls, 40 % infill**: it takes the spring load | 4 | 40 min |
-| `cam` | 1 | as exported (flat). **100 % infill**, 0.12 mm layers for a smooth profile. Pause at the magnet pocket or glue the magnet after | 4 | 30 min |
-| `piston` | 1 | flange down, 3 walls | 4 | 1.5 h |
+| `car` | 1 | upright, dish on top (as exported). 3 walls, 15 % infill. The arm's gusset is 45°, no supports | 4 | 2 h |
+| `housing` | 1 | upright (as exported), 3 walls | 4 | 2 h |
 | `sleeve` | 4 | upright, 100 % (they are tiny) | 4 | 20 min |
 | `led_collar` | 1 | disc down | 4 | 40 min |
 | `rivet_cap` | 20 | face down, 0.12 mm layers look nicer | 3 | 40 min |
@@ -55,14 +53,12 @@ Defaults: PLA, 0.20 mm layers, 3 walls, 15 % gyroid infill, no supports.
 
 ## Fit checks after printing
 
-* **Print the launcher first** (`tower`, `lever`, `cam`, `piston`, then the
-  `chassis`) and bench test it with the motor and spring before printing the walls.
-* The **piston must slide freely** through the tower lip and drop under its own
-  weight. If it sticks: light sanding, or a puff of dry PTFE lube.
-* The **lever must swing freely** on its axle and the cam must sit snug on the
-  motor's D-shaft (a drop of CA if it slips).
+* **Print the lift first** (`car`, `tube`, `housing`, then the `chassis`) and
+  bench test it with the motor and belt before printing the walls.
+* The **car must slide freely** in the tube along its full length and drop
+  under its own weight. If it sticks: light sanding, or a puff of dry PTFE lube.
 * A 32 mm capsule must drop through the tube from the top without catching.
-* The tube must sit fully in the tower collar and through the hopper.
+* The tube must sit fully in the deck socket and through the hopper.
 * Rivet caps: snug push fit. Loose? A dot of glue stick or Blu-Tack. Tight? Sand the peg.
 
 ## Changing the size
@@ -75,5 +71,5 @@ python cad/build.py          # re-export STL/3MF + renders
 pytest cad                   # re-check fits and the ball path
 ```
 
-Common tweaks: `PAYLOAD_D` (ball size), `S` (block size), `COAST` (piston travel),
+Common tweaks: `PAYLOAD_D` (ball size), `S` (block size), `CAR_H` (car height),
 `FLOOR_SLOPE`, `GLYPH` (the pixel art).

@@ -1,19 +1,18 @@
 # Mystery Block 🟨❓
 
-A 3D-printed, wall-mounted **"?" block that pops a candy capsule out of the top
-when you bonk it from below**, with a coin chime and an LED flash.
+A 3D-printed, wall-mounted **"?" block that lifts a candy capsule up out of
+the top when you bonk it from below**, with a coin chime and an LED flash.
 
 ![Mystery block render](images/renders/assembly.png)
 
 > _Hero photo goes here once it's built: `images/photos/12-hero.jpg`_
 
-* **Same pop every time.** A tap or a wallop, it doesn't matter: the hit is
-  sensed, and a small gear motor turns a snail cam that releases a spring lever
-  into the piston. The capsule flies out at the same height on every hit.
-* **Instant.** The launcher waits cocked, so it fires ~0.1 s after the hit and
-  re-cocks itself. No latch to tune: the cam both cocks and releases the spring.
-* **One capsule per bonk.** A sloped funnel feeds a one-ball chamber; the
-  piston blocks the next ball until it drops back.
+* **Same every time.** A tap or a wallop, it doesn't matter: the hit is
+  sensed, and a small gear motor drives a belt that lifts the capsule out of
+  the lid and holds it there for 8 s. Nothing to catch, nothing on the floor.
+  Not taken? It rides back down and comes up again on the next hit.
+* **One capsule per bonk.** A sloped funnel feeds a one-ball lift car; the
+  car's tall side closes the window while it's up, so no gate is needed.
 * **Sound + light:** Hall sensor → Arduino Nano → DFPlayer chime + 24-LED ring.
 * **Printable on a Bambu A1 + AMS.** Multicolour faces printed face down, so
   colour swaps only happen on the first 1.2 mm.
@@ -22,17 +21,17 @@ when you bonk it from below**, with a coin chime and an LED flash.
 
 ![Hit it](images/renders/hit.gif)
 
-**Interactive 3D viewer** (orbit, exploded build, cut-away launcher): [`docs/viewer/`](docs/viewer/).
+**Interactive 3D viewer** (orbit, exploded build, cut-away lift): [`docs/viewer/`](docs/viewer/).
 Run `python -m http.server -d docs/viewer` and open http://localhost:8000.
 
-| Inside, ¼ speed | The build |
+| Inside, cut in half | The build |
 |---|---|
 | ![inside](images/renders/inside.gif) | ![build](images/renders/build.gif) |
 
 | Cocked (waiting) | Fired |
 |---|---|
-| ![launcher cocked](images/renders/launcher_cocked.png) | ![launcher fired](images/renders/launcher_fired.png) |
-| ![section](images/renders/section.png) | ![section hit](images/renders/section_hit.png) |
+| ![lift down](images/renders/lift_down.png) | ![lift up](images/renders/lift_up.png) |
+| ![section](images/renders/section.png) | ![section up](images/renders/section_up.png) |
 
 ## Build it
 
@@ -67,12 +66,12 @@ python cad/build.py      # regenerate STL / 3MF / renders
 pytest cad               # fit, interference, ball-path and capacity checks
 ```
 
-Block size, capsule size, piston travel, floor slope, the pixel "?" and more are
+Block size, capsule size, lift height, floor slope, the pixel "?" and more are
 one-line changes.
 
 ## Status
 
-v2 design (motorized spring launch), not yet physically built. Follow along in the
+v3 design (belt-driven lift), not yet physically built. Follow along in the
 [build log](docs/build-log.md), and see the
 [architecture notes](docs/architecture.md) for why it works the way it does.
 

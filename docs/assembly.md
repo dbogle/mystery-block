@@ -34,7 +34,7 @@ then hold a flat object on it for a few seconds while it cools.
    and check each one **attracts** a column magnet before gluing.
    (A wrong one is easy to notice: the lid will jump off.)
 4. Glue 1 magnet in the post on the **hit panel** (polarity doesn't matter).
-5. Glue 1 magnet in the pocket on the flat face of the **cam** (polarity doesn't matter).
+5. The last magnet goes in the lift car's belt clamp (step 4).
 
 ## 3. Electronics on the deck
 
@@ -54,49 +54,52 @@ Follow [wiring.md](wiring.md). Placement:
 
 > 📷 `03-electronics-bay.jpg`
 
-## 4. Launcher
+## 4. Lift
 
-![Launcher cocked](../images/renders/launcher_cocked.png)
+![Lift down](../images/renders/lift_down.png)
 
-1. **Spring**: stand it on the short post on the deck between the pivot posts
-   and the tower position.
-2. **Lever**: set it between the two pivot posts, spring cup down over the
-   spring, follower nose up. Push the **M3×30** axle through posts and lever and
-   add a nyloc nut. Snug only: the lever must swing freely.
-3. **Piston**: stand it on the three seat ribs in the middle of the deck,
-   flange down. The lever tip goes under it.
-4. Stick 3 **bumper dots** on the top of the piston flange (evenly spaced, tight
-   to the body) and 1 on the top of the lever where it passes under the tower
-   slot roof (≈ 42 mm from the axle).
-5. **Tower**: lower it straight down over the piston, slot toward the lever.
-   The piston comes up through the lip. Fix with three **M3×20** screws from the
-   top and nyloc nuts under the deck.
-6. **Motor**: solder the 100 nF capacitor across its tabs and its two wires,
-   then lay it in the cradle, shaft toward the front (toward the lever), and
-   strap it with two zip ties through the slots.
-7. **Cam**: push it onto the D-shaft, magnet face toward the front. Turn it by
-   hand (with the motor's own shaft, slowly) and check that it pushes the lever
-   down, then lets it snap up at the cliff.
-8. **Cam sensor**: glue the second SS49E in the seat on the small post in front
-   of the cam, branded face toward the cam.
-9. Bench test now, before the walls go on (see [wiring](wiring.md)): power up,
-   send `f` in the Serial Monitor. The piston should pop and the cam should stop
-   cocked. LEDs blinking red = wrong direction, swap the motor wires.
+1. **Motor**: solder the 100 nF capacitor across its tabs and its two wires.
+   Push the **GT2 pulley** onto the D-shaft (flat under a set screw) so the
+   pulley sits centred on the slot in the deck in front of the tube socket.
+   Lay the motor in the cradle, shaft toward the tube, and strap it with two
+   zip ties through the slots.
+2. **Lift sensors**: glue two SS49E sensors in the two seats on the right (+X) outside wall of the
+   housing, branded face against the wall. The lower one is **bottom**, the
+   upper one is **top**.
+3. **Idler**: put the **M3×25** through the slot near the top of the housing
+   and the idler (inside), nyloc nut outside. Leave it loose for now.
+4. **Car**: glue a magnet into the pocket on the right face of the belt clamp
+   (polarity doesn't matter). Drop the car into the tube socket from above, arm
+   toward the front: it goes down through the hole in the deck until the arm's
+   gusset rests in its slot.
+5. **Housing**: lower it straight down over the car's arm and the pulley (the
+   notch in its right wall clears the pulley hub, the gap at the top lets the
+   belt clamp through), and fix it with two **M3×8** from under the deck.
+6. **Tube**: slide it down over the car, slot to the front so the arm runs in
+   it, window to the back, into the socket.
+7. **Belt**: lift the car by hand to about half height. Run the belt from the
+   clamp down around the pulley, up around the idler and back down to the
+   clamp. Push both ends into the clamp's slot (one from above, one from below)
+   and tighten the **M3×12** pinch screw. Pull the idler axle up in its slot
+   until the belt is firm but not twanging, then tighten the nut.
+8. Turn the pulley by hand: the car should run smoothly from the bottom (dish
+   just below the window sill) to the top without touching the tube.
+9. Bench test now, before the walls go on (see [wiring](wiring.md)): power up
+   (the car drives down to the bottom), then send `f` in the Serial Monitor.
+   The car rises, waits 8 s and comes back down. LEDs blinking red right after
+   power-up = wrong direction: swap the motor wires or set `MOTOR_REVERSE 1`.
 
-> 📷 `04-launcher.jpg` · 🎥 `05-launcher-test.mp4` (slow-mo of the lever snapping up)
+> 📷 `04-lift.jpg` · 🎥 `05-lift-test.mp4`
 
-## 5. Tube, hopper, LED ring
+## 5. Hopper, LED ring
 
-1. Set the **tube** into the collar on top of the tower. Turn it so
-   the **window faces the back** of the block (the back wall is the one with
-   the two mounting holes). The thin *rib* on the tube then points to the front.
-2. Lower the **hopper** over the tube (lift the tube out, put the hopper on,
-   drop the tube back through it if that's easier). The rib slides into the slot and the
-   four pegs on the posts drop into the holes underneath. It just rests there.
-   The walls will clamp it.
-3. Feed the LED-ring wires down the **wire hole** in the hopper floor (right
+1. Lower the **hopper** over the tube and housing. The rib on the tube's right
+   side slides into the slot, the housing goes through its cutout, and the four
+   pegs on the posts drop into the holes underneath. It just rests there. The
+   walls will clamp it.
+2. Feed the LED-ring wires down the **wire hole** in the hopper floor (right
    side, toward the front).
-4. Slide the **LED collar** onto the tube top, disc down, so its top is ~2 mm
+3. Slide the **LED collar** onto the tube top, disc down, so its top is ~2 mm
    below the tube top. Snug the M3 set screw (or a wrap of tape). Hot glue the
    24-LED ring on the disc, LEDs **up**.
 
@@ -134,9 +137,9 @@ Do this with the core **upside down** (resting on the column tops).
    (you should see a folder `01` in the root). Insert it in the DFPlayer.
 2. Flash [`firmware/mystery_block`](../firmware) (see [firmware/README](../firmware/README.md)).
 3. Plug in USB-C. You should hear the start-up chime and see the ring shimmer.
-4. The cam may turn once to find its parked spot (it can fire once, so keep
-   the hatch clear).
-5. Bonk the panel: coin sound + gold flash + launch. Every 10th hit: bonus.
+4. The car drives down to its loading position (if it isn't there already).
+5. Bonk the panel: coin sound + gold flash + the capsule rises out of the lid.
+   Every 10th hit: bonus.
 6. If hits are missed or false: set `DEBUG_HALL 1`, watch the Serial Monitor,
    and adjust `HIT_THRESHOLD` (see the firmware README).
 
@@ -144,10 +147,10 @@ Do this with the core **upside down** (resting on the column tops).
 
 1. Lift the lid off, pour in ~15-19 capsules, put the lid back on (magnets click).
 2. Hold the block up (or rest its edges on two books so the bottom is free) and
-   tap the bottom. A capsule should pop out of the top, the same height every time.
-3. Too low: a stiffer or longer spring. Too wild: a softer one.
+   tap the bottom. A capsule should rise out of the top and wait there.
+3. Don't take it: after 8 s it goes back down, and the next hit offers it again.
 
-> 🎥 `08-first-launch.mp4` (slow-mo on a phone is perfect for the blog)
+> 🎥 `08-first-lift.mp4`
 
 ## 10. Mounting
 
@@ -168,10 +171,12 @@ The bottom has to be hittable, so the block lives on a wall at head height.
 
 | Symptom | Fix |
 |---|---|
-| Ball rises but falls back in | Stiffer spring, or lighten the piston (print it with 2 walls / 0 % infill) |
-| Motor runs but no launch | Cam slipping on the shaft (CA glue), or spring missing from its post |
-| LEDs blink red after a hit | Launcher fault: motor backwards, jammed, or cam sensor not seeing the magnet. See the firmware README |
-| Launch on power-up | Normal if the cam stopped mid-turn when unplugged: it finishes the turn to park |
+| Motor runs, car doesn't move | Pulley set screw not on the shaft flat, or belt loose in the clamp |
+| Car stops short of the top / bottom | Sensor not seeing the magnet: check its seat, or lower `LIFT_ON_DELTA` (`DEBUG_LIFT 1` shows the readings) |
+| LEDs blink red | Lift fault: motor backwards, jammed, or a lift sensor not seeing the magnet. The next hit retries. See the firmware README |
+| Car moves on power-up | Normal: it always drives down to the bottom sensor first |
+| Car squeaks / sticks | Belt too tight (loosen the idler a little) or a print blob in the tube slot |
+| Two capsules come up | Shouldn't happen (the car covers the window). Check the car is the 70 mm tall v3 car |
 | Panel sticks up | Sleeve holes too tight, or a guide screw not straight. Ream bosses to 8.5 mm |
 | Balls stop feeding | Capsule seam catching? Rotate/sand. Check nothing (wire!) is on the hopper floor |
 | No sound | SD card FAT32? Folder `01` at the root? Speaker on SPK1/SPK2 (not the DAC pins) |

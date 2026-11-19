@@ -116,9 +116,9 @@ h1 span { color: var(--accent); }
   <div class="legend" id="legend"></div>
 
   <div class="notes">
-    <div class="note"><h2>Hit it</h2><p>The bottom panel only senses the hit. The motor turns the cam past its cliff, the spring snaps the lever up, and the capsule pops out of the top. Same height every time.</p></div>
-    <div class="note"><h2>Exploded</h2><p>Every printed part in its place, then flown in in the order of the assembly guide: deck, hit panel, launcher, tube, hopper, walls, lid.</p></div>
-    <div class="note"><h2>Inside</h2><p>The block cut in half through the launch tube. Turn on slow motion to watch the cam load the spring and the one-capsule chamber refill.</p></div>
+    <div class="note"><h2>Hit it</h2><p>The bottom panel only senses the hit. A small motor drives a belt that lifts the capsule up out of the lid, where it waits to be taken. Then the car goes back down for the next one.</p></div>
+    <div class="note"><h2>Exploded</h2><p>Every printed part in its place, then flown in in the order of the assembly guide: deck, hit panel, motor and belt, lift car, tube, hopper, walls, lid.</p></div>
+    <div class="note"><h2>Inside</h2><p>The block cut in half through the lift. Watch the car rise, its tall side close the window so the next capsule waits, and the next one roll in when it comes back down.</p></div>
   </div>
 </div>
 
@@ -170,7 +170,7 @@ h1 span { color: var(--accent); }
   }
   $("loading").hidden = true;
 
-  const clipFront = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // keeps y > 0
+  const clipFront = new THREE.Plane(new THREE.Vector3(1, 0, 0), 0); // keeps x > 0 (cut through the lift and belt)
   const parts = {};
   for (const p of meta.parts) {
     const pos = new Float32Array(bin, p.v[0], p.v[1] * 3);
@@ -193,36 +193,41 @@ h1 span { color: var(--accent); }
   }
   const ballMat = () => new THREE.MeshStandardMaterial({ color: new THREE.Color(meta.colors.ball), roughness: 0.35, transparent: true, side: THREE.DoubleSide });
   const ballGeo = new THREE.SphereGeometry(meta.ball_d / 2, 40, 24);
-  const ball = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball);
-  const ball2 = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball2);
-  const allMats = Object.values(parts).map((x) => x.mat).concat([ball.material, ball2.material]);
+  const ball = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball);    // in the car
+  const ball2 = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball2);  // queued at the window
+  const ball3 = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball3);  // first of the pile, moves up to the window
+  // the rest of the hopper: a loose layer of capsules resting on the floor
+  const pileMat = ballMat();
+  const P3 = meta.pile[0];
+  const pile = meta.pile.slice(1).map((p) => { const b = new THREE.Mesh(ballGeo, pileMat); b.position.set(...p); scene.add(b); return b; });
+  const allMats = Object.values(parts).map((x) => x.mat).concat([ball.material, ball2.material, ball3.material, pileMat]);
 
   // hit ring under the panel
   const ring = new THREE.Mesh(new THREE.RingGeometry(30, 34, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(css("--hit") || "#e2543a"), transparent: true, side: THREE.DoubleSide }));
   ring.position.set(0, 0, -6); scene.add(ring);
 
   // legend
-  const legend = [["body", "Printed shell"], ["inner", "Internals"], ["moving", "Moving parts"], ["tube", "Launch tube"], ["motor", "N20 motor"], ["ball", "Capsule"]];
+  const legend = [["body", "Printed shell"], ["inner", "Internals"], ["moving", "Moving parts"], ["tube", "Lift tube"], ["motor", "Motor + pulleys"], ["shadow", "GT2 belt"], ["ball", "Capsule"]];
   $("legend").innerHTML = legend.map(([k, t]) => `<span><i style="background:${meta.colors[k]}"></i>${t}</span>`).join("");
 
   // ---------- kinematics ----------
-  const D2R = Math.PI / 180;
-  const T = meta.lever_table;                       // deg about +Y, every 2 deg of cam
-  const leverAt = (beta) => {
-    const b = ((beta % 360) + 360) % 360, i = Math.floor(b / 2), f = b / 2 - i;
-    return T[i] + (T[Math.min(i + 1, T.length - 1)] - T[i]) * f;
-  };
-  const COCK = T[Math.round(meta.beta_cocked / 2)], UP = Math.min(...T);
-  const LEVER_LEN = 74, TIP_STROKE = 14;            // tip travel per params.py
-  const RPM_DEG = 300;                              // 50 RPM = 300 deg/s
-  const B0 = meta.beta_cocked;
-  let fireBeta = B0; while (leverAt(fireBeta) > UP + 0.01 && fireBeta < B0 + 120) fireBeta += 0.25;
+  // Real timings: 50 RPM motor + 20T GT2 pulley = ~33 mm/s, so ~2.3 s per
+  // move. The 8 s hold on top is shortened here so the loop stays watchable.
   const HIT_T = 0.35, MOTOR_T = HIT_T + 0.05;
-  const FIRE_T = MOTOR_T + (fireBeta - B0) / RPM_DEG;
-  const KICK = 0.02, V0 = 1900, G = 9810;           // mm/s, mm/s^2
-  const CYCLE = 3.2;
-  const tipLift = (a) => Math.max(0, (TIP_STROKE * (COCK - a)) / (COCK - UP) - (TIP_STROKE - meta.lift));
+  const MOVE = meta.travel / 33;                       // s
+  const UP_T = MOTOR_T + MOVE;                         // car at the top
+  const HOLD = 3.0;                                    // (8 s on the real block)
+  const GRAB_T = UP_T + 1.2;                           // a hand takes the capsule
+  const DOWN0 = UP_T + HOLD, DOWN_T = DOWN0 + MOVE;    // lowered again
+  const ROLL_T = DOWN_T + 0.1, ROLL = 0.6;             // next capsule rolls in
+  const CYCLE = ROLL_T + ROLL + 0.9;
   const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+  // motor ramps in ~0.1 s at each end, constant speed in between
+  const move = (u) => { const r = 0.1 / MOVE; if (u <= 0) return 0; if (u >= 1) return 1;
+    const v = 1 / (1 - r); return u < r ? v * u * u / (2 * r) : u > 1 - r ? 1 - v * (1 - u) ** 2 / (2 * r) : v * (u - r / 2); };
+  const lerp3 = (a, b, f) => a.map((v, i) => v + (b[i] - v) * f);
+  const Q = meta.queue, QU = meta.queue_up;
+  const Z0 = meta.ball_z;
 
   function cycleState(t) {
     const s = {};
@@ -230,49 +235,44 @@ h1 span { color: var(--accent); }
     const h = t - HIT_T;
     s.panel = h < 0 ? 0 : h < 0.06 ? meta.stroke * ease(h / 0.06) : h < 0.2 ? meta.stroke * (1 - ease((h - 0.06) / 0.14)) : 0;
     s.ring = h >= 0 && h < 0.5 ? h / 0.5 : -1;
-    // cam turns one revolution after the hit
-    const run = Math.max(0, Math.min(360, (t - MOTOR_T) * RPM_DEG));
-    s.beta = B0 + run;
-    s.lever = leverAt(s.beta);
-    // piston: kicked to the lip, then falls back onto the lever tip
-    const support = tipLift(s.lever);
-    let free = 0;
-    const k = t - FIRE_T;
-    if (k > 0) {
-      const top = meta.lift + meta.coast;
-      free = k < KICK ? top * (k / KICK) : Math.max(0, top - 0.5 * G * (k - KICK) ** 2);
-    }
-    s.piston = Math.max(support, free);
-    // capsule: rides the piston, then flies
-    const z0 = meta.ball_z;
-    if (k > KICK) {
-      const tau = k - KICK;
-      s.ball = [0, -140 * tau, z0 + meta.lift + meta.coast + V0 * tau - 0.5 * G * tau * tau];
-      s.ballFade = s.ball[2] < meta.size + 20 && tau > 0.2 ? Math.max(0, (s.ball[2] - (meta.size - 40)) / 60) : 1;
-    } else { s.ball = [0, 0, z0 + s.piston]; s.ballFade = 1; }
-    // next capsule rolls in once the piston is seated again
-    const seatedAt = MOTOR_T + 1.2 * 0.25;          // lever lowers the piston early in the turn
-    const r = (t - Math.max(seatedAt, FIRE_T + 0.35)) / 0.35;
-    const wait = [0, 34, z0 + 9];
-    s.ball2 = r <= 0 ? wait : r >= 1 ? [0, 0, z0] : [0, wait[1] * (1 - ease(r)), z0 + 9 * (1 - ease(r))];
-    s.phase = t < HIT_T ? 0 : t < FIRE_T ? 1 : t < FIRE_T + 0.45 ? 2 : run < 360 ? 3 : 4;
+    // car
+    if (t < MOTOR_T) s.car = 0;
+    else if (t < UP_T) s.car = meta.travel * move((t - MOTOR_T) / MOVE);
+    else if (t < DOWN0) s.car = meta.travel;
+    else if (t < DOWN_T) s.car = meta.travel * (1 - move((t - DOWN0) / MOVE));
+    else s.car = 0;
+    // capsule in the car rides up, then a hand lifts it off and away
+    const g = (t - GRAB_T) / 0.7;
+    if (g <= 0) { s.ball = [0, 0, Z0 + s.car]; s.ballFade = 1; }
+    else { const e = ease(g); s.ball = [0, -60 * e, Z0 + meta.travel + 70 * e]; s.ballFade = Math.max(0, 1 - g * 1.1); }
+    // queued capsule: leans on the loaded capsule, then on the car's side
+    // while it's away, then rolls into the dish
+    const r = (t - ROLL_T) / ROLL;
+    if (r >= 0) s.ball2 = lerp3(QU, [0, 0, Z0], ease(r));
+    else if (s.car > 8) s.ball2 = QU;
+    else s.ball2 = lerp3(Q, QU, s.car / 8);
+    // and the first capsule of the pile takes its place at the window
+    s.ball3 = r <= 0 ? P3 : lerp3(P3, Q, ease((r - 0.2) / 0.8));
+    s.phase = t < HIT_T ? 0 : t < MOTOR_T + 0.2 ? 1 : t < UP_T ? 2 : t < DOWN0 ? 3 : t < DOWN_T ? 4 : t < ROLL_T + ROLL ? 5 : 6;
     return s;
   }
   const PHASES = [
-    ["READY", "Waiting with the spring already loaded."],
+    ["READY", "A capsule waits in the lift car; the next one waits at the window."],
     ["HIT", "The panel moves 4 mm. The Hall sensor sees it and starts the motor."],
-    ["POP", "The cam drops off the nose. The spring snaps the lever into the piston."],
-    ["RELOAD", "The motor keeps turning. The cam loads the spring again."],
-    ["READY", "Parked on the cam magnet. The next capsule has rolled in."],
+    ["UP", "The belt lifts the car. Its tall side closes the window behind it."],
+    ["TAKE IT", "The capsule sits on top of the block until it's taken (8 s on the real block)."],
+    ["DOWN", "The car goes back down. An untaken capsule would ride down with it."],
+    ["REFILL", "The window opens and the next capsule rolls into the car."],
+    ["READY", "Stopped on the bottom sensor, ready for the next hit."],
   ];
 
   function applyCycle(s) {
     parts.hit_panel.holder.position.z = s.panel;
-    parts.lever.holder.rotation.y = s.lever * D2R;
-    parts.cam.holder.rotation.y = s.beta * D2R;
-    parts.piston.holder.position.z = s.piston;
+    parts.car.holder.position.z = s.car;
     ball.position.set(...s.ball); ball.material.opacity = s.ballFade; ball.visible = s.ballFade > 0.01;
     ball2.position.set(...s.ball2); ball2.visible = true;
+    ball3.position.set(...s.ball3); ball3.visible = true;
+    for (const b of pile) b.visible = true;
     ring.visible = s.ring >= 0;
     if (s.ring >= 0) { const sc = 1 + s.ring * 1.6; ring.scale.set(sc, sc, 1); ring.material.opacity = 1 - s.ring; }
   }
@@ -282,9 +282,9 @@ h1 span { color: var(--accent); }
 
   // ---------- exploded ----------
   const ORDER = [
-    ["chassis", "Deck"], ["sleeves", "Hit panel"], ["hit_panel", "Hit panel"], ["lever", "Spring lever"],
-    ["motor", "Motor"], ["cam", "Cam"], ["piston", "Piston"], ["tower", "Tower"], ["tube", "Launch tube"],
-    ["hopper", "Hopper"], ["led_collar", "LED collar"],
+    ["chassis", "Deck"], ["sleeves", "Hit panel"], ["hit_panel", "Hit panel"], ["motor", "Motor"],
+    ["housing", "Belt housing"], ["car", "Lift car"], ["tube", "Lift tube"], ["pulleys", "Pulley + idler"],
+    ["belt", "GT2 belt"], ["hopper", "Hopper"], ["led_collar", "LED collar"],
     ["wall_back", "Walls"], ["wall_right", "Walls"], ["wall_front", "Walls"], ["wall_left", "Walls"],
     ["caps_back", "Rivet caps"], ["lid", "Lid"], ["caps_lid", "Lid"],
   ];
@@ -300,10 +300,11 @@ h1 span { color: var(--accent); }
       const a = amountFor(name);
       x.holder.position.copy(x.base).addScaledVector(x.explode, a);
     }
-    parts.lever.holder.rotation.y = COCK * D2R; parts.cam.holder.rotation.y = B0 * D2R;
-    const ba = amountFor("piston");
-    ball.position.set(0, 0, meta.ball_z + parts.piston.explode.z * ba);
-    ball.material.opacity = 1; ball.visible = true; ball2.visible = false; ring.visible = false;
+    const ba = amountFor("car");
+    ball.position.set(0, 0, Z0 + parts.car.explode.z * ba);
+    ball.material.opacity = 1; ball.visible = true; ring.visible = false;
+    ball2.visible = ball3.visible = false;
+    for (const b of pile) b.visible = false;
   }
 
   // ---------- modes ----------
@@ -316,7 +317,7 @@ h1 span { color: var(--accent); }
   const VIEWS = {
     hit: { pos: [320, -640, 250], target: [0, 0, 150] },
     explode: { pos: [700, -920, 640], target: [0, 0, 165] },
-    inside: { pos: [30, -380, 100], target: [-15, 0, 85] },
+    inside: { pos: [-360, -150, 175], target: [0, -6, 105] },
   };
   function setMode(m) {
     mode = m;
@@ -330,7 +331,7 @@ h1 span { color: var(--accent); }
     const v = VIEWS[m];
     camera.position.set(...v.pos); controls.target.set(...v.target); controls.update();
     for (const x of Object.values(parts)) x.holder.position.copy(x.base);
-    if (m === "inside") $("slow").checked = true;
+    if (m === "inside") $("slow").checked = false;
     if (m === "explode") { spread = 1; $("spread").value = 100; building = !reduced; buildT = 0; }
     clock = 0;
   }

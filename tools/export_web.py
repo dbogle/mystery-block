@@ -2,18 +2,18 @@
 
     python tools/export_web.py
 
-Writes docs/viewer/model.json: part list, colours, pivots, explode vectors,
-the lever-angle table for the animation, and "data", a base64 blob of
-float32 vertices + uint32 indices that the parts index into.
-Static parts are in world coordinates. The lever and cam are exported in
-their own frames, so the viewer can rotate them about their axles.
+Writes docs/viewer/model.json: part list, colours, explode vectors, the lift
+numbers for the animation, a resting pile of capsules for the hopper, and
+"data", a base64 blob of float32 vertices + uint32 indices that the parts
+index into. All parts are in world coordinates; the car is exported in its
+down position and the viewer moves it up by the lift height.
 """
 from __future__ import annotations
 
 import base64
 import json
 import sys
-from math import degrees
+from math import cos, radians, sqrt
 from pathlib import Path
 
 import numpy as np
@@ -21,13 +21,13 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "cad"))
 
-from build123d import Pos, Rot  # noqa: E402
+from build123d import Pos, Sphere  # noqa: E402
 
 import model as m  # noqa: E402
 
-from params import (CAM_X, GUIDE_XY, LED_COLLAR_Z, LIFT, COAST, PAYLOAD_D,  # noqa: E402
-                    PIV_X, PIV_Z, RIVET_U, RIVET_Z, S, STROKE, WASHER_TOP,
-                    PISTON_TOP_SEATED)
+from params import (CAR_R, COL_LEG, COL_T, FLOOR_SLOPE, GUIDE_XY, HALF,  # noqa: E402
+                    HOUSING_HX, HOUSING_Y0, LED_COLLAR_Z, LIFT_TRAVEL, PAYLOAD_D,
+                    R_OUT, RIVET_U, RIVET_Z, S, STROKE, WASHER_TOP)
 
 OUT = ROOT / "docs" / "viewer"
 TOL, ANG = 0.15, 0.35
@@ -78,8 +78,11 @@ def main():
     add("caps_lid", lid_caps, "rivet", "shell", (0, 0, 290))
 
     add("chassis", m.make_chassis(), "inner", "core")
-    add("motor", m.motor_dummy(), "motor", "core", (0, 40, 0))
-    add("tower", m.make_tower(), "inner", "core", (0, 0, 70))
+    add("motor", m.motor_dummy(), "motor", "core", (60, 0, 0))
+    pulleys, belt = m.belt_dummy()
+    add("pulleys", pulleys, "motor", "core", (0, -60, 0))
+    add("belt", belt, "shadow", "core", (0, -60, 0))
+    add("housing", m.make_housing(), "inner", "core", (0, -95, 60))
     add("hopper", m.make_hopper(), "inner", "core", (0, 0, 150))
     add("tube", m.make_tube(), "tube", "core", (0, 0, 115))
     add("led_collar", Pos(0, 0, LED_COLLAR_Z) * m.make_led_collar(), "inner", "core", (0, 0, 205))
@@ -89,25 +92,88 @@ def main():
         sleeves = s if sleeves is None else sleeves + s
     add("sleeves", sleeves, "inner", "core", (0, 0, -40))
     add("hit_panel", m.make_hit_panel(), "body", "hit", (0, 0, -80))
-    add("piston", m.make_piston(), "moving", "piston", (0, 0, 40))
-    add("lever", m.make_lever(), "moving", "lever", (0, -45, 0), pivot=[PIV_X, 0, PIV_Z])
-    add("cam", m.make_cam(), "moving", "cam", (0, -70, 0), pivot=[CAM_X, 0, m.CAM_Z])
+    add("car", m.make_car(), "moving", "car", (0, 0, 45))
 
-    # lever angle (deg, about +Y as three.js rotates) for each cam angle
-    table = []
-    for b in range(0, 361, 2):
-        bb = b if b <= 90 else b - 360
-        table.append(round(-degrees(m.lever_angle_for_cam(bb)), 3))
+    queue, queue_up = queue_spots()
+    pile = hopper_pile([queue, queue_up])
+    print(f"  hopper pile: {len(pile)} capsules (+1 queued, +1 in the car)")
     meta = dict(
-        size=S, parts=parts, lever_table=table,
-        beta_cocked=m.BETA_COCKED, cam_drop=m.CAM_DROP - 270.0,
-        stroke=STROKE, lift=LIFT, coast=COAST, ball_d=PAYLOAD_D,
-        ball_z=m.chamber_ball_z("cocked"), piston_top=PISTON_TOP_SEATED,
+        size=S, parts=parts, stroke=STROKE, ball_d=PAYLOAD_D,
+        ball_z=m.chamber_ball_z(0), travel=LIFT_TRAVEL,
+        queue=queue, queue_up=queue_up, pile=pile,
         colors={k: hexcol(k) for k in m.COLORS},
     )
     meta["data"] = base64.b64encode(bytes(blob)).decode()  # one servable file
     (OUT / "model.json").write_text(json.dumps(meta))
     print(f"wrote {OUT/'model.json'} ({len(meta['data'])/1e6:.1f} MB)")
+
+
+R = PAYLOAD_D / 2
+REST = R / cos(radians(FLOOR_SLOPE))  # centre above the floor point below it
+
+
+def _rest_z(x, y):
+    return m.floor_height(x, y) + REST
+
+
+def queue_spots():
+    """Where the next capsule waits at the window: leaning on the capsule in
+    the car (car down), and leaning on the car's side wall (car up)."""
+    zc = m.chamber_ball_z(0)
+    y = 45.0
+    while y > 0:  # roll toward the tube until it touches the loaded capsule
+        z = _rest_z(0, y - 0.1)
+        if sqrt((y - 0.1) ** 2 + (z - zc) ** 2) < PAYLOAD_D + 0.1:
+            break
+        y -= 0.1
+    down = [0.0, round(y, 2), round(_rest_z(0, y), 2)]
+    yu = CAR_R + R + 0.1
+    up = [0.0, round(yu, 2), round(_rest_z(0, yu), 2)]
+    return down, up
+
+
+def hopper_pile(reserved):
+    """A loose single layer of capsules resting on the hopper floor, filled
+    from the lowest point outward, then checked against the real solids."""
+    lim = HALF - R - 0.6
+    solids = [m.make_hopper(), m.make_tube(), m.make_housing(),
+              Pos(0, 0, LED_COLLAR_Z) * m.make_led_collar()]
+
+    def in_column(x, y):
+        ax, ay = abs(x), abs(y)
+        a = ax > HALF - COL_LEG - R and ay > HALF - COL_T - R
+        b = ax > HALF - COL_T - R and ay > HALF - COL_LEG - R
+        return a or b
+
+    cand = []
+    for x in np.arange(-lim, lim + 0.01, 2.0):
+        for y in np.arange(-lim, lim + 0.01, 2.0):
+            if sqrt(x * x + y * y) < R_OUT + R + 1 or in_column(x, y):
+                continue
+            if abs(x) < HOUSING_HX + R + 1 and HOUSING_Y0 - 7 - R - 1 < y < 0:
+                continue
+            cand.append((_rest_z(x, y), float(x), float(y)))
+    cand.sort()
+    taken = [tuple(p) for p in reserved]
+    out = []
+    for z, x, y in cand:
+        if all((x - a) ** 2 + (y - b) ** 2 + (z - c) ** 2 >= (PAYLOAD_D + 0.6) ** 2
+               for a, b, c in taken):
+            b = Pos(x, y, z) * Sphere(R)
+            lift = 0.0
+            while lift < 8 and any(m_overlap(b, s_) > 1.0 for s_ in solids):
+                lift += 1.0
+                b = Pos(x, y, z + lift) * Sphere(R)
+            if lift >= 8:
+                continue
+            taken.append((x, y, z + lift))
+            out.append([round(x, 2), round(y, 2), round(z + lift, 2)])
+    return out
+
+
+def m_overlap(a, b):
+    r = a & b
+    return 0.0 if r is None else r.volume
 
 
 if __name__ == "__main__":

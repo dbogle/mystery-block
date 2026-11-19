@@ -1,26 +1,27 @@
-"""Parametric model of the candy-launching mystery block (build123d).
+"""Parametric model of the mystery block (build123d).
 
 Each `make_*` function returns one part in world position unless noted;
 `printable_parts()` gives them in print orientation. `assembly()` places
 every part in world coordinates for renders and fit tests.
 
-How it works (motorised launcher):
+How it works (lift):
   hit panel  -> floats on 4 guide screws; a magnet tells the Hall sensor
                 under the deck that someone bonked it (4 mm of travel)
-  cam        -> an N20 gear motor turns a snail cam that has pushed the lever
-                down against a spring and is parked just before its drop-off
-  lever      -> on a hit the cam turns ~40 deg more, the lever is released,
-                the spring snaps its tip up into the piston
-  piston     -> rises LIFT + COAST, stops on the tower lip; the ball keeps
-                going up the tube and out of the hatch in the lid
-  hopper     -> sloped floor rolls the next ball through the tube window
-                onto the piston; the cam re-cocks and parks (~1 s)
+  car        -> a tall cup in the tube carries one capsule. A GT2 belt
+                (N20 motor pulley below, idler above) pulls it up by an arm
+                that runs in a slot at the front of the tube, until the
+                capsule sits on top of the lid. It waits, then goes back down.
+  housing    -> encloses the belt next to the tube so capsules can't touch
+                it; holds the idler and the top/bottom Hall sensors
+  hopper     -> sloped floor rolls the next capsule through the tube window
+                onto the car once it is down. While the car is away its side
+                keeps the window shut, so exactly one capsule loads.
 """
 from __future__ import annotations
 
-from math import cos, degrees, radians, sin, sqrt
+from math import sqrt
 
-from build123d import (Align, Axis, Box, Color, Cone, Cylinder, Location,
+from build123d import (Align, Axis, Box, Color, Cone, Cylinder,
                        Part, Plane, Polygon, Pos, Rectangle, Rot, Sphere,
                        chamfer, extrude, loft)
 
@@ -144,11 +145,6 @@ def make_lid():
 # --------------------------------------------------------------------------
 # chassis: deck + lower corner posts (world position == print orientation)
 # --------------------------------------------------------------------------
-def tower_boss_points():
-    r = TOWER_BOSS_R
-    return [(r, 0.0), (0.0, r), (0.0, -r)]
-
-
 def mount_grid_points():
     """3.2 mm holes on a 10 mm grid wherever the deck is free."""
     pts = []
@@ -157,7 +153,7 @@ def mount_grid_points():
             x, y = i * 10.0, j * 10.0
             if max(abs(x), abs(y)) > HALF - 12:
                 continue
-            if sqrt(x * x + y * y) < TOWER_BOSS_R + 6:
+            if sqrt(x * x + y * y) < R_OUT + 8:
                 continue
             if sqrt((x - SPEAKER_XY[0]) ** 2 + (y - SPEAKER_XY[1]) ** 2) < 25:
                 continue
@@ -168,7 +164,9 @@ def mount_grid_points():
                 continue
             if abs(x) > HALF - POST - 4 and abs(y) > HALF - POST - 4:
                 continue
-            if x < -25 and -16 < y < MOTOR_L + 12:   # launcher area
+            if abs(x) < HOUSING_HX + 6 and y < -R_OUT:      # belt housing + arm slot
+                continue
+            if 0 < x < MOTOR_X0 + MOTOR_L + 6 and BELT_Y - 12 < y < BELT_Y + 12:  # motor
                 continue
             pts.append((x, y))
     return pts
@@ -185,119 +183,99 @@ def speaker_holes():
 
 
 # --------------------------------------------------------------------------
-# launcher geometry (shared by parts, assembly and tests)
+# lift: car, belt housing (world position)
 # --------------------------------------------------------------------------
-def _solve(f, lo=-0.6, hi=0.6):
-    for _ in range(80):
-        mid = (lo + hi) / 2
-        if f(mid) > 0:
-            hi = mid
-        else:
-            lo = mid
-    return (lo + hi) / 2
+def make_car():
+    """The lift car in its down (loading) position. It is tall so its side
+    keeps the hopper window shut while it is up. Prints upright, dish on top."""
+    r = CAR_R
+    top, bot = CAR_TOP_DOWN, CAR_BOT_DOWN
+    c = cyl(r, bot, top)
+    c = c - Pos(0, 0, top + PAYLOAD_D / 2 - DISH) * Sphere(PAYLOAD_D / 2)
+    # light: hollow, open at the bottom, 45 deg roof under the dish
+    rc = r - 2.0
+    roof = top - DISH - 2.0
+    c = c - cyl(rc, bot - 1, roof - rc)
+    c = c - Pos(0, 0, roof - rc - 0.01) * Cone(
+        rc, 0.01, rc, align=(Align.CENTER, Align.CENTER, Align.MIN))
+    # arm out of the front slot to the belt, with a 45 deg gusset underneath
+    za = ARM_MIN
+    y_in = -r + 1.5
+    y_out = STRAND_Y + 2.0
+    arm = box(-ARM_W / 2, ARM_W / 2, y_out, y_in, za - 3.0, za + 3.0)
+    L = y_in - y_out
+    gus = Plane.YZ * Polygon((y_in, za - 2.9), (y_out + 2.0, za - 2.9),
+                             (y_in, za - 2.9 - (L - 2.0)), align=None)
+    arm = arm + extrude(gus, ARM_W / 2, both=True)
+    # belt clamp: both belt ends go into the 1.8 mm slot (one from above, one
+    # from below) and are pinched by an M3 screw through the clamp
+    cl = box(-5.5, 5.5, STRAND_Y - 3.5, STRAND_Y + 2.5, za - CLAMP_H / 2, za + CLAMP_H / 2)
+    cl = cl - box(-BELT_W / 2 - 0.3, BELT_W / 2 + 0.3, STRAND_Y - 0.9, STRAND_Y + 0.9,
+                  za - CLAMP_H, za + CLAMP_H)
+    cl = cl - Pos(0, STRAND_Y + 1.6, za) * Rot(0, 90, 0) * Cylinder(1.4, 12)  # pinch screw
+    # magnet for the top/bottom lift sensors, in the +X face
+    cl = cl - Pos(5.5 - MAGNET_H / 2 + 0.01, STRAND_Y - 2.2, za) * Rot(0, 90, 0) * Cylinder(MAGNET_D / 2, MAGNET_H)
+    return c + arm + cl
 
 
-def lever_top_z(x, theta):
-    """World Z of the lever's top face at world X for lever angle theta (rad)."""
-    return PIV_Z + LEVER_T / 2 * cos(theta) + (x - PIV_X) * sin(theta)
+def place_car(lift, shape=None):
+    """Car raised by `lift` mm (0 = down, LIFT_TRAVEL = up)."""
+    shape = shape if shape is not None else make_car()
+    return Pos(0, 0, lift) * shape
 
 
-THETA_UP = _solve(lambda t: lever_top_z(TIP_X, t) - TIP_UP)
-THETA_COCKED = _solve(lambda t: lever_top_z(TIP_X, t) - (TIP_UP - TIP_STROKE))
+def make_housing():
+    """Belt housing: keeps capsules off the belt. Stands on the deck in front
+    of the tube, goes up through the hopper floor, carries the idler axle
+    and the two lift sensors. World position == print orientation."""
+    hx, y0 = HOUSING_HX, HOUSING_Y0
+    w = 1.6
+    low_top = ARM_MAX + CLAMP_H / 2 + 2.0          # arm channel top
+    top = IDLER_Z + IDLER_FLANGE_R + 1.5
+    h = box(-hx, hx, y0, -R_OUT + 1.0, DECK_TOP, low_top)
+    h = h + box(-hx, hx, y0, HOUSING_UPPER_Y, low_top - 0.01, top)
+    h = h - cyl(R_OUT + 0.25, DECK_TOP - 1, low_top + 1)
+    h = h - box(-hx + w, hx - w, y0 + w, -R_OUT + 2, DECK_TOP - 1, low_top)
+    h = h - box(-hx + w, hx - w, y0 + w, HOUSING_UPPER_Y - w, DECK_TOP - 1, top - w)
+    # motor pulley hub comes in through the +X wall at the bottom
+    h = h - box(hx - w - 1, hx + 1, BELT_Y - 8.0, BELT_Y + 8.0, DECK_TOP - 1, MOTOR_Z + 8.0)
+    # idler axle (M3 along X), slotted 3 mm so the belt can be tensioned
+    h = h - box(-hx - 1, hx + 1, BELT_Y - 1.65, BELT_Y + 1.65, IDLER_Z - 2.0, IDLER_Z + 1.0)
+    # clear the chassis tube socket ring
+    h = h - cyl(R_OUT + 3.4, DECK_TOP - 1, DECK_TOP + 4.5)
+    # open over the idler so its flanges clear the walls (still far too
+    # narrow for a capsule), and wide enough for the belt clamp, so the
+    # housing can be lowered over the car during assembly
+    h = h - box(-BELT_W / 2 - 3.0, BELT_W / 2 + 3.0, BELT_Y - IDLER_FLANGE_R - 1.0,
+                HOUSING_UPPER_Y + 1, IDLER_Z - IDLER_FLANGE_R - 1.0, top + 1)
+    # foot tab on the front (-Y) side with two M3 holes (self-tapping
+    # screws from under the deck)
+    h = h + box(-hx, hx, y0 - 7.0, y0 + 0.01, DECK_TOP, DECK_TOP + 4)
+    for x, y in housing_screw_points():
+        h = h - cyl(1.25, DECK_TOP - 1, DECK_TOP + 3.5, x, y)
+    # sensor seats on the +X wall (SS49E flat, face against the wall)
+    for z in (ARM_MIN, ARM_MAX):
+        h = h + box(hx - 0.01, hx + 2.6, STRAND_Y - 6.0, STRAND_Y + 1.4, z - 4.5, z + 4.5)
+        h = h - box(hx + 0.4, hx + 2.0, STRAND_Y - 4.5, STRAND_Y + 0.1, z - 2.0, z + 6.0)
+    return h
 
 
-def _dist_to_lever_top(px, pz, theta):
-    """Perpendicular distance from a point above the lever to its top face."""
-    nx, nz = -sin(theta), cos(theta)
-    return (px - PIV_X) * nx + (pz - PIV_Z) * nz - LEVER_T / 2
+def housing_screw_points():
+    return [(sx * 5.0, HOUSING_Y0 - 3.5) for sx in (-1, 1)]
 
 
-NOSE_D = CAM_X - PIV_X  # follower nose position along the lever
+def lift_sensor_points():
+    """Where the bottom and top lift sensors sit (x, y, z)."""
+    return [(HOUSING_HX + 1.2, STRAND_Y - 2.2, z) for z in (ARM_MIN, ARM_MAX)]
 
 
-def nose_center(theta):
-    """World (x, z) of the follower nose (a half-round ridge on the lever top)."""
-    lx, lz = NOSE_D, LEVER_T / 2
-    return (PIV_X + lx * cos(theta) - lz * sin(theta),
-            PIV_Z + lx * sin(theta) + lz * cos(theta))
-
-
-# cam centre: CAM_R0 + CAM_CLR above the nose when released
-_nu = nose_center(THETA_UP)
-CAM_Z = _nu[1] + NOSE_R + CAM_R0 + CAM_CLR
-_nc = nose_center(THETA_COCKED)
-CAM_R1 = sqrt((CAM_X - _nc[0]) ** 2 + (CAM_Z - _nc[1]) ** 2) - NOSE_R
-CAM_DROP = CAM_RISE + CAM_DWELL            # profile angle of the drop
-# Cam rotation (deg about +Y). The profile point at angle psi is at the
-# bottom (touching the nose) when beta = psi - 270.
-MAG_TOP_BETA = CAM_DROP - 270.0 - 12.0     # magnet passes its sensor here
-CAM_MAG_ANGLE = 90.0 + MAG_TOP_BETA        # so the sensor sits at the top
-BETA_COCKED = MAG_TOP_BETA - 22.0          # where the motor parks (sensor onset)
-BETA_FIRED = CAM_DROP - 270.0 + 30.0
-MOTOR_Y0 = LEVER_W / 2 + 1.0        # gearbox face (shaft points -Y)
-CAM_SENSOR = (CAM_X, -(CAM_W / 2 + 1.2), CAM_Z + CAM_MAG_R)
-
-
-def lever_clear(pts, theta):
-    """True if no cam profile point (world x, z) is inside the lever at angle
-    theta. Models the parts of the lever the cam can reach: the one-sided
-    follower nose (quarter round on the tip side, vertical face toward the
-    pivot so the cam corner drops off it at once), the relieved top around it
-    and the full-height top further out."""
-    c, s_ = cos(theta), sin(theta)
-    top = LEVER_T / 2
-    for px, pz in pts:
-        dx, dz = px - PIV_X, pz - PIV_Z
-        u, w = dx * c + dz * s_, -dx * s_ + dz * c      # lever frame
-        if u > TIP_X - PIV_X:
-            continue
-        if NOSE_D <= u <= NOSE_D + NOSE_R:              # nose
-            if w < top or (u - NOSE_D) ** 2 + (w - top) ** 2 < NOSE_R ** 2:
-                return False
-            continue
-        h = top - LEVER_RELIEF if abs(u - NOSE_D) < RELIEF_W else top
-        if w < h:
-            return False
-    return True
-
-
-def cam_points(beta, n=1440):
-    """Cam profile (world x, z) at rotation beta (deg), plus the drop corner."""
-    pts = []
-    for i in range(n):
-        psi = 360.0 * i / n
-        r = cam_radius(psi)
-        a = radians(psi - beta)  # rotation about +Y turns the XZ profile by -beta
-        pts.append((CAM_X + r * cos(a), CAM_Z + r * sin(a)))
-    a = radians(CAM_DROP - beta)
-    pts.append((CAM_X + CAM_R1 * cos(a), CAM_Z + CAM_R1 * sin(a)))
-    return pts
-
-
-def lever_angle_for_cam(beta):
-    """Highest lever angle (rad) the cam allows at rotation beta (deg), capped
-    by the up-stop. The spring holds the lever there."""
-    pts = cam_points(beta)
-    lo, hi = THETA_COCKED - 0.1, THETA_UP
-    if lever_clear(pts, hi):
-        return hi
-    for _ in range(36):
-        mid = (lo + hi) / 2
-        lo, hi = (mid, hi) if lever_clear(pts, mid) else (lo, mid)
-    return lo
-
-
-def cam_radius(psi):
-    psi %= 360.0
-    if psi < CAM_RISE:
-        return CAM_R0 + (CAM_R1 - CAM_R0) * psi / CAM_RISE
-    if psi < CAM_DROP:
-        return CAM_R1
-    return CAM_R0
+def housing_footprint(clear=0.0):
+    return box(-HOUSING_HX - clear, HOUSING_HX + clear, HOUSING_Y0 - 7.0 - clear, -R_OUT + 1.0,
+               DECK_TOP - 1, S)
 
 
 # --------------------------------------------------------------------------
-# chassis: deck + lower corner posts + launcher mounts
+# chassis: deck + lower corner posts + lift mounts
 # (world position == print orientation)
 # --------------------------------------------------------------------------
 def make_chassis():
@@ -331,125 +309,32 @@ def make_chassis():
     for x, y in mount_grid_points():
         deck = deck - cyl(1.6, DECK_BOT - 1, DECK_TOP + 1, x, y)
 
-    # ---- launcher mounts ----------------------------------------------------
-    # tower screws (M3 x 20 from the top, nyloc nut under the deck)
-    for x, y in tower_boss_points():
-        deck = deck - cyl(1.65, DECK_BOT - 1, DECK_TOP + 1, x, y)
-    # piston seat ribs (0, 120, 240 deg; the lever comes in from 180). They sit
-    # inside the tower ring and also locate it.
-    for a in (0, 120, 240):
-        rib = box(FLANGE_D / 2 - 2.0, TOWER_RI - 0.9, -4.0, 4.0, DECK_TOP - 0.01, SEAT_Z)
-        deck = deck + Rot(0, 0, a) * rib
-    # lever pivot posts with a horizontal M3 axle hole
-    gap = LEVER_W / 2 + 0.6
-    for sy in (-1, 1):
-        y0, y1 = sorted((sy * gap, sy * (gap + 6.0)))
-        post = box(PIV_X - 4, PIV_X + 4, y0, y1, DECK_TOP - 0.01, PIV_Z + 6)
-        post = post.fillet(3.9, post.edges().filter_by(Axis.Y).group_by(Axis.Z)[-1])
-        deck = deck + post
-    deck = deck - Pos(PIV_X, 0, PIV_Z) * Rot(90, 0, 0) * Cylinder(1.7, 2 * gap + 14)
-    # spring post under the cam
-    deck = deck + cyl(2.8, DECK_TOP - 0.01, DECK_TOP + 4, SPRING_X, 0)
-    # N20 motor cradle: U-channel along +Y, shaft toward the cam (-Y)
-    mx0, mx1 = CAM_X - MOTOR_W / 2 - 0.2, CAM_X + MOTOR_W / 2 + 0.2
-    my0, my1 = MOTOR_Y0, MOTOR_Y0 + MOTOR_L
-    mz0 = CAM_Z - MOTOR_H / 2 - 0.2
-    cradle = box(mx0 - 2.5, mx1 + 2.5, my0, my1, DECK_TOP - 0.01, CAM_Z + 2)
-    cradle = cradle - box(mx0, mx1, my0 - 1, my1 + 1, mz0, CAM_Z + 3)
-    for yy in (my0 + 9, my1 - 9):  # zip-tie slots under the motor
-        cradle = cradle - box(mx0 - 3, mx1 + 3, yy - 2, yy + 2, mz0 - 3.5, mz0 - 1.5)
+    # ---- lift mounts ---------------------------------------------------------
+    # tube socket ring + a hole the car drops through
+    deck = deck + (cyl(R_OUT + 3.0, DECK_TOP - 0.01, DECK_TOP + 4.0)
+                   - cyl(R_OUT + 0.25, DECK_TOP, DECK_TOP + 5))
+    deck = deck - cyl(CAR_R + 0.8, DECK_BOT - 1, DECK_TOP + 1)
+    # slot for the car arm's gusset, open toward the housing
+    deck = deck - box(-ARM_W / 2 - 0.6, ARM_W / 2 + 0.6, STRAND_Y, 0, DECK_BOT + 1.0, DECK_TOP + 5)
+    # pocket for the motor pulley (flanges dip below the deck top)
+    deck = deck - box(-HOUSING_HX + 1.6, HOUSING_HX - 1.0, BELT_Y - PULLEY_FLANGE_R - 1,
+                      BELT_Y + PULLEY_FLANGE_R + 1, MOTOR_Z - PULLEY_FLANGE_R - 1.0, DECK_TOP + 1)
+    # housing screw holes
+    for x, y in housing_screw_points():
+        deck = deck - cyl(1.7, DECK_BOT - 1, DECK_TOP + 1, x, y)
+    # N20 motor cradle: U-channel along +X, shaft toward the pulley (-X)
+    mx0, mx1 = MOTOR_X0, MOTOR_X0 + MOTOR_L
+    my0, my1 = BELT_Y - MOTOR_W / 2 - 0.2, BELT_Y + MOTOR_W / 2 + 0.2
+    mz0 = MOTOR_Z - MOTOR_H / 2 - 0.2
+    deck = deck - box(mx0 - 1, mx1 + 1, my0, my1, mz0, DECK_TOP + 1)   # body pocket
+    cradle = box(mx0, mx1, my0 - 2.5, my1 + 2.5, DECK_TOP - 0.01, MOTOR_Z + 2)
+    cradle = cradle - box(mx0 - 1, mx1 + 1, my0, my1, mz0, MOTOR_Z + 3)
+    for xx in (mx0 + 8, mx1 - 8):  # zip-tie slots over the motor
+        cradle = cradle - box(xx - 2, xx + 2, my0 - 3, my1 + 3, mz0 - 0.01, MOTOR_Z + 3)
+        deck = deck - box(xx - 2, xx + 2, my0 - 3.5, my0 - 1.0, DECK_BOT - 1, DECK_TOP + 1)
+        deck = deck - box(xx - 2, xx + 2, my1 + 1.0, my1 + 3.5, DECK_BOT - 1, DECK_TOP + 1)
     deck = deck + cradle
-    # cam-position Hall sensor post (sensor glued on its +Y face)
-    sx_, sy_, sz_ = CAM_SENSOR
-    spost = box(sx_ - 3.5, sx_ + 3.5, sy_ - 4.0, sy_ - 1.6, DECK_TOP - 0.01, sz_ + 3.5)
-    deck = deck + spost
-    deck = deck - box(sx_ - 2.3, sx_ + 2.3, sy_ - 1.65, sy_ - 1.0, sz_ - 2.0, sz_ + 4)  # seat
     return deck
-
-
-def make_tower():
-    """Holds the piston seat, the lever slot and the tube. World position.
-
-    Print it upside down (lip/top on the bed): `tower` in /stl is already flipped.
-    """
-    top = TUBE_BOT + 4.0
-    t = cyl(TOWER_RO, DECK_TOP, LIP_BOT)
-    for x, y in tower_boss_points():
-        t = t + cyl(4.5, DECK_TOP, LIP_BOT, x, y)
-    t = t - cyl(TOWER_RI, DECK_TOP - 1, LIP_BOT + 0.01)
-    # lip: piston up-stop underneath, tube stands on top
-    t = t + (cyl(TOWER_RO, LIP_BOT - 0.01, TUBE_BOT) - cyl(R_IN, LIP_BOT - 1, TUBE_BOT + 1))
-    # locating collar around the tube foot
-    t = t + (cyl(R_OUT + 3.0, TUBE_BOT - 0.01, top) - cyl(R_OUT + 0.25, TUBE_BOT - 0.02, top + 1))
-    # (the piston seat ribs are on the chassis, so the piston can be dropped
-    # in before the tower goes over it)
-    # lever slot (-X). Its roof is the lever's up-stop (with a felt dot)
-    roof = lever_top_z(-TOWER_RI, THETA_UP) + PAD
-    t = t - box(-TOWER_RO - 6, -TOWER_RI + 3, -SLOT_W / 2, SLOT_W / 2, DECK_TOP - 1, roof)
-    # screw holes: M3 x 20 head sits on an 8 mm floor at the bottom of each boss
-    for x, y in tower_boss_points():
-        t = t - cyl(1.7, DECK_TOP - 1, top + 1, x, y)
-        t = t - cyl(3.3, DECK_TOP + 8, top + 1, x, y)
-    return t
-
-
-def make_lever():
-    """World position for angle 0 (horizontal). Use place_lever(theta)."""
-    L = TIP_X - PIV_X
-    hub = Pos(0, 0, 0) * Rot(90, 0, 0) * Cylinder(6.0, LEVER_W)
-    bar = box(0, L - 3, -LEVER_W / 2, LEVER_W / 2, -LEVER_T / 2, LEVER_T / 2)
-    end = Pos(L - 3, 0, 0) * Rot(90, 0, 0) * Cylinder(LEVER_T / 2, LEVER_W)
-    lev = hub + bar + (end & box(L - 3, L, -LEVER_W, LEVER_W, -LEVER_T, LEVER_T))
-    lev = lev + box(L - 3, L, -LEVER_W / 2, LEVER_W / 2, 0, LEVER_T / 2)  # flat top at tip
-    lev = lev - Rot(90, 0, 0) * Cylinder(1.65, LEVER_W + 2)              # axle
-    # relief around the nose: the cam corner passes over it after the drop
-    lev = lev - box(NOSE_D - RELIEF_W, NOSE_D + RELIEF_W, -LEVER_W, LEVER_W,
-                    LEVER_T / 2 - LEVER_RELIEF, LEVER_T)
-    # one-sided follower nose: quarter round toward the tip, vertical face
-    # toward the pivot (the cam drops off it instantly)
-    q = Pos(NOSE_D, 0, LEVER_T / 2) * Rot(90, 0, 0) * Cylinder(NOSE_R, LEVER_W)
-    q = q & box(NOSE_D, NOSE_D + NOSE_R, -LEVER_W, LEVER_W, LEVER_T / 2, LEVER_T)
-    post = box(NOSE_D, NOSE_D + NOSE_R, -LEVER_W / 2, LEVER_W / 2,
-               LEVER_T / 2 - LEVER_RELIEF - 0.01, LEVER_T / 2 + 0.01)
-    lev = lev + q + post
-    d = SPRING_X - PIV_X
-    lev = lev - cyl(5.6, -LEVER_T / 2 - 1, -LEVER_T / 2 + 2.0, d, 0)      # spring cup
-    return lev
-
-
-def place_lever(theta, shape=None):
-    shape = shape if shape is not None else make_lever()
-    return Pos(PIV_X, 0, PIV_Z) * Rot(0, -degrees(theta), 0) * shape
-
-
-def make_cam():
-    """Snail cam in its own frame: axis along Y through the origin."""
-    pts = []
-    n = 180
-    for i in range(n):
-        psi = 360.0 * i / n
-        r = cam_radius(psi)
-        pts.append((r * cos(radians(psi)), r * sin(radians(psi))))
-        if abs(psi - (CAM_DROP - 360.0 / n)) < 1e-6:  # sharp, undercut drop
-            pts.append((CAM_R1 * cos(radians(CAM_DROP)), CAM_R1 * sin(radians(CAM_DROP))))
-            u = radians(CAM_DROP - CAM_UNDERCUT)
-            pts.append((CAM_R0 * cos(u), CAM_R0 * sin(u)))
-    prof = Plane.XZ * Polygon(*pts, align=None)
-    cam = Pos(0, CAM_W / 2, 0) * extrude(prof, CAM_W)
-    # 3 mm D shaft
-    shaft = Rot(90, 0, 0) * Cylinder(1.55, CAM_W + 2)
-    shaft = shaft - box(1.2, 3, -CAM_W, CAM_W, -3, 3)
-    cam = cam - shaft
-    # magnet on the -Y face
-    a = radians(CAM_MAG_ANGLE)
-    mx, mz = CAM_MAG_R * cos(a), CAM_MAG_R * sin(a)
-    cam = cam - Pos(mx, -CAM_W / 2 + MAGNET_H / 2 - 0.5, mz) * Rot(90, 0, 0) * Cylinder(MAGNET_D / 2, MAGNET_H + 1)
-    return cam
-
-
-def place_cam(beta_deg, shape=None):
-    shape = shape if shape is not None else make_cam()
-    return Pos(CAM_X, 0, CAM_Z) * Rot(0, beta_deg, 0) * shape
 
 
 # --------------------------------------------------------------------------
@@ -488,9 +373,11 @@ def make_hopper():
             ya, yb = sorted((sy * HALF, sy * (HALF - COL_LEG)))
             slab = slab + box(xa, xb, ya, yb, SLAB_BOT, top)
     slab = slab & box(-HALF, HALF, -HALF, HALF, SLAB_BOT, top)
-    # tube hole + anti-rotation slot for the tube rib (-Y)
+    # tube hole + anti-rotation slot for the tube rib (+X)
     slab = slab - cyl(R_OUT + 0.25, SLAB_BOT - 1, top + 1)
-    slab = slab - box(-2.3, 2.3, -R_OUT - 2.5, -R_OUT + 0.5, SLAB_BOT - 1, top + 1)
+    slab = slab - box(R_OUT - 0.5, R_OUT + 2.5, -2.3, 2.3, SLAB_BOT - 1, top + 1)
+    # the belt housing passes up through the floor in front of the tube
+    slab = slab - housing_footprint(0.4)
     # alignment holes onto the lower post pegs
     for x, y in corners(HALF - POST / 2):
         slab = slab - cyl(2.7, SLAB_BOT - 1, SLAB_BOT + 5, x, y)
@@ -510,13 +397,18 @@ def make_hopper():
 
 
 # --------------------------------------------------------------------------
-# launch tube (world == print orientation)
+# lift tube (world == print orientation)
 # --------------------------------------------------------------------------
+TUBE_SLOT_TOP = ARM_MAX + 3.0 + 3.0     # arm top at full lift + margin
+
+
 def make_tube():
     t = cyl(R_OUT, TUBE_BOT, S)
-    # anti-rotation rib (-Y side) for the hopper slot
-    t = t + box(-2.0, 2.0, -R_OUT - 2.2, -R_OUT + 0.5, TUBE_BOT + 5.0, Z_C)
+    # anti-rotation rib (+X side) for the hopper slot
+    t = t + box(R_OUT - 0.5, R_OUT + 2.2, -2.0, 2.0, SLAB_BOT - 6.0, Z_C)
     t = t - cyl(R_IN, TUBE_BOT - 1, S + 1)
+    # front (-Y) slot for the car arm, open at the bottom so the car slides in
+    t = t - box(-ARM_W / 2 - 0.6, ARM_W / 2 + 0.6, -R_OUT - 1, 0, TUBE_BOT - 1, TUBE_SLOT_TOP)
     # entry window facing +Y, with a 45 deg peaked roof (prints w/o support)
     t = t - box(-WIN_W / 2, WIN_W / 2, 0, R_OUT + 3, WIN_BOT, WIN_BOT + WIN_W)
     d = WIN_W / sqrt(2)
@@ -532,24 +424,6 @@ def make_tube():
 # --------------------------------------------------------------------------
 # moving parts
 # --------------------------------------------------------------------------
-def make_piston():
-    """World position when seated (cocked). Closed bottom: the lever hits it."""
-    r = R_IN - PISTON_CLEAR
-    top = PISTON_TOP_SEATED
-    p = cyl(FLANGE_D / 2, SEAT_Z, SEAT_Z + FLANGE_T)
-    p = p + cyl(r, SEAT_Z + FLANGE_T - 0.01, top)
-    dish = 2.5
-    p = p - Pos(0, 0, top + PAYLOAD_D / 2 - dish) * Sphere(PAYLOAD_D / 2)
-    # light hollow core, closed at the bottom, 45 deg conical roof
-    rc = r - 2.4
-    z0 = SEAT_Z + 2.0
-    roof = top - dish - 2.5
-    p = p - cyl(rc, z0, roof - rc)
-    p = p - Pos(0, 0, roof - rc - 0.01) * Cone(
-        rc, 0.01, rc, align=(Align.CENTER, Align.CENTER, Align.MIN))
-    return p
-
-
 def make_hit_panel():
     """World position at rest."""
     half = PANEL_SIZE / 2
@@ -648,26 +522,52 @@ def place_lid(shape):
 
 
 def motor_dummy():
-    """Stand-in N20 gear motor + shaft (not printed), for renders and tests."""
-    y0 = MOTOR_Y0
-    body = box(CAM_X - MOTOR_W / 2, CAM_X + MOTOR_W / 2, y0, y0 + MOTOR_L,
-               CAM_Z - MOTOR_H / 2, CAM_Z + MOTOR_H / 2)
-    shaft = Pos(CAM_X, y0 - 5, CAM_Z) * Rot(90, 0, 0) * Cylinder(1.15, 10)  # D-flat stand-in
+    """Stand-in N20 gear motor + shaft along X (not printed)."""
+    body = box(MOTOR_X0, MOTOR_X0 + MOTOR_L, BELT_Y - MOTOR_W / 2, BELT_Y + MOTOR_W / 2,
+               MOTOR_Z - MOTOR_H / 2, MOTOR_Z + MOTOR_H / 2)
+    shaft = Pos(MOTOR_X0 / 2, BELT_Y, MOTOR_Z) * Rot(0, 90, 0) * Cylinder(1.5, MOTOR_X0 + 1)
     return body + shaft
 
 
-def chamber_ball_z(state="cocked"):
-    """Centre height of the ball resting in the piston dish."""
-    top = PISTON_TOP_SEATED if state == "cocked" else PISTON_TOP_UP
-    return top + PAYLOAD_D / 2 - 2.5 + 0.05
+def _pulley(r_flange, z):
+    hub = Pos(0, BELT_Y, z) * Rot(0, 90, 0) * Cylinder(PULLEY_PD / 2 - 0.75, BELT_W + 1)
+    for sx in (-1, 1):
+        hub = hub + Pos(sx * (BELT_W / 2 + 1.0), BELT_Y, z) * Rot(0, 90, 0) * Cylinder(r_flange, 1.0)
+    return hub - Pos(0, BELT_Y, z) * Rot(0, 90, 0) * Cylinder(1.55, 20)  # 3 mm bore
 
 
-def assembly(state="cocked", panel_lift=0.0, with_balls=True):
+def belt_dummy():
+    """GT2 pulley, idler and the belt loop (bought parts, not printed).
+    The belt is drawn on its pitch line; it moves with the car in reality."""
+    p = _pulley(PULLEY_FLANGE_R, MOTOR_Z) + _pulley(IDLER_FLANGE_R, IDLER_Z)
+    r = PULLEY_PD / 2
+    hw, ht = BELT_W / 2, BELT_T / 2
+    belt = box(-hw, hw, BELT_Y - r - ht, BELT_Y - r + ht, MOTOR_Z, IDLER_Z)
+    belt = belt + box(-hw, hw, BELT_Y + r - ht, BELT_Y + r + ht, MOTOR_Z, IDLER_Z)
+    for z, up in ((MOTOR_Z, False), (IDLER_Z, True)):
+        ring = (Pos(0, BELT_Y, z) * Rot(0, 90, 0) * Cylinder(r + ht, BELT_W)
+                - Pos(0, BELT_Y, z) * Rot(0, 90, 0) * Cylinder(r - ht, BELT_W + 1))
+        half = box(-hw - 1, hw + 1, -HALF, HALF, z, z + r + 2) if up else \
+            box(-hw - 1, hw + 1, -HALF, HALF, z - r - 2, z)
+        belt = belt + (ring & half)
+    return p, belt
+
+
+def chamber_ball_z(lift=0.0):
+    """Centre height of the capsule resting in the car dish."""
+    return CAR_TOP_DOWN + lift + PAYLOAD_D / 2 - DISH + 0.05
+
+
+def assembly(lift=0.0, panel_lift=0.0, with_balls=True):
     """List of (name, shape, color_key, moving) in world coordinates.
 
-    state: 'cocked' (idle, lever down, piston seated) or 'fired'
-    (lever up against its stop, piston lifted LIFT). panel_lift: hit panel.
+    lift: car height above its loading position (0 = down, LIFT_TRAVEL =
+    up, capsule presented above the lid). panel_lift: hit panel.
     """
+    if lift == "down":
+        lift = 0.0
+    elif lift == "up":
+        lift = LIFT_TRAVEL
     parts = []
     glyph, shadow = make_glyph(), make_shadow()
     for side, kind in (("front", "plain"), ("left", "plain"),
@@ -677,23 +577,21 @@ def assembly(state="cocked", panel_lift=0.0, with_balls=True):
         parts.append((f"shadow_{side}", place_side(shadow, side), "shadow", False))
     parts.append(("lid", place_lid(make_lid()), "body", False))
     parts.append(("chassis", make_chassis(), "inner", False))
-    parts.append(("tower", make_tower(), "inner", False))
     parts.append(("hopper", make_hopper(), "inner", False))
     parts.append(("tube", make_tube(), "tube", False))
+    parts.append(("housing", make_housing(), "inner", False))
     parts.append(("motor", motor_dummy(), "motor", False))
+    pulleys, belt = belt_dummy()
+    parts.append(("pulleys", pulleys, "motor", False))
+    parts.append(("belt", belt, "shadow", False))
     parts.append(("led_collar", Pos(0, 0, LED_COLLAR_Z) * make_led_collar(), "inner", False))
     for x, y in corners(GUIDE_XY):
         parts.append((f"sleeve_{x:+.0f}_{y:+.0f}",
                       Pos(x, y, WASHER_TOP) * make_sleeve(), "inner", False))
     parts.append(("hit_panel", Pos(0, 0, panel_lift) * make_hit_panel(), "moving", True))
-    cocked = state == "cocked"
-    theta = THETA_COCKED if cocked else THETA_UP
-    lift = 0.0 if cocked else LIFT
-    parts.append(("lever", place_lever(theta), "moving", True))
-    parts.append(("cam", place_cam(BETA_COCKED if cocked else BETA_FIRED), "moving", True))
-    parts.append(("piston", Pos(0, 0, lift) * make_piston(), "moving", True))
+    parts.append(("car", place_car(lift), "moving", True))
     if with_balls:
-        parts.append(("ball_chamber", Pos(0, 0, chamber_ball_z(state)) * Sphere(PAYLOAD_D / 2),
+        parts.append(("ball_chamber", Pos(0, 0, chamber_ball_z(lift)) * Sphere(PAYLOAD_D / 2),
                       "ball", True))
     return parts
 
@@ -701,7 +599,6 @@ def assembly(state="cocked", panel_lift=0.0, with_balls=True):
 # printable parts: name -> (shape, qty, colour key, note)
 def printable_parts():
     cb, ct = make_capsule()
-    tower_print = Rot(180, 0, 0) * make_tower()  # lip on the bed
     return {
         "panel_front_left": (make_side_panel("plain"), 2, "body", "front + left walls"),
         "panel_back": (make_side_panel("back"), 1, "body", "back wall (wall-mount holes)"),
@@ -709,13 +606,11 @@ def printable_parts():
         "panel_glyph": (make_glyph(), 4, "glyph", "'?' inlay, print WITH a panel"),
         "panel_shadow": (make_shadow(), 4, "shadow", "shadow inlay, print WITH a panel"),
         "lid": (make_lid(), 1, "body", "removable top"),
-        "chassis": (make_chassis(), 1, "inner", "deck, posts, lever pivot, motor cradle"),
-        "tower": (tower_print, 1, "inner", "piston seat + tube stand (printed upside down)"),
-        "lever": (Rot(90, 0, 0) * make_lever(), 1, "inner", "launch lever (prints on its side)"),
-        "cam": (Rot(90, 0, 0) * make_cam(), 1, "inner", "snail cam for the N20 motor"),
+        "chassis": (make_chassis(), 1, "inner", "deck, posts, tube socket, motor cradle"),
+        "housing": (make_housing(), 1, "inner", "belt housing, idler + lift sensor mounts"),
         "hopper": (make_hopper(), 1, "inner", "sloped floor + upper columns"),
-        "tube": (make_tube(), 1, "tube", "launch tube"),
-        "piston": (make_piston(), 1, "inner", "launch piston"),
+        "tube": (make_tube(), 1, "tube", "lift tube"),
+        "car": (make_car(), 1, "inner", "lift car (prints upright)"),
         "hit_panel": (make_hit_panel(), 1, "body", "bottom panel you hit"),
         "sleeve": (make_sleeve(), 4, "inner", "guide sleeves"),
         "rivet_cap": (make_rivet_cap(), 20, "rivet", "rivet caps (16 sides + 4 lid)"),
