@@ -8,7 +8,7 @@ OUT = Path(__file__).resolve().parents[1] / "docs" / "images" / "wiring.svg"
 
 RED, BLK, YEL, BLU, GRN, ORG, PUR = ("#d62828", "#222222", "#e0a800", "#1d6fd1",
                                     "#2a9d4b", "#f07f13", "#7b3fbf")
-W, H = 1100, 640
+W, H = 1100, 900
 svg = [f'<svg xmlns="http://www.w3.org/2000/svg" width="{W}" height="{H}" '
        f'viewBox="0 0 {W} {H}" font-family="Helvetica, Arial, sans-serif">',
        f'<rect width="{W}" height="{H}" fill="#ffffff"/>']
@@ -51,10 +51,11 @@ def resistor(x, y, label, color):
 
 
 # ---- components ------------------------------------------------------------
-NX, NY, NW, NH = 430, 170, 220, 300
+NX, NY, NW, NH = 430, 170, 220, 340
 box(NX, NY, NW, NH, "Arduino Nano", "ATmega328P, 5 V")
 nano = {
-    "5V": (NX, NY + 90), "GND": (NX, NY + 140), "A0": (NX, NY + 240),
+    "5V": (NX, NY + 90), "GND": (NX, NY + 140), "A0": (NX, NY + 240), "A1": (NX, NY + 280),
+    "D5": (NX + NW, NY + 280), "D9": (NX + NW, NY + 320),
     "D6": (NX + NW, NY + 90), "D4": (NX + NW, NY + 140),
     "D10": (NX + NW, NY + 190), "D11": (NX + NW, NY + 240),
 }
@@ -69,7 +70,7 @@ for k, p in usb.items():
     pin(*p, k, "in-right")
 
 HX, HY = 40, 380
-box(HX, HY, 190, 150, "SS49E Hall", "under the deck, flat face\ntoward the panel magnet", "#eef3fb")
+box(HX, HY, 190, 150, "SS49E Hall (hit)", "under the deck, flat face\ntoward the panel magnet", "#eef3fb")
 hall = {"VCC": (HX + 190, HY + 84), "GND": (HX + 190, HY + 108), "OUT": (HX + 190, HY + 132)}
 for k, p in hall.items():
     pin(*p, k, "in-right")
@@ -87,6 +88,35 @@ box(LX, LY, 200, 150, "WS2812B ring", "24 LEDs around the tube top", "#fff8e6")
 ring = {"5V": (LX, LY + 80), "GND": (LX, LY + 105), "DIN": (LX, LY + 130)}
 for k, p in ring.items():
     pin(*p, k, "in-left")
+
+CX, CY = 40, 580
+box(CX, CY, 190, 150, "SS49E Hall (cam)", "on the post next to the cam,\nsees the cam magnet", "#eef3fb")
+camh = {"VCC": (CX + 190, CY + 84), "GND": (CX + 190, CY + 108), "OUT": (CX + 190, CY + 132)}
+for k, p in camh.items():
+    pin(*p, k, "in-right")
+
+MX, MY = 720, 620
+box(MX, MY, 190, 180, "MX1508 driver", "or DRV8833 (IN1/IN2)", "#f6eefb")
+drv = {"IN1": (MX, MY + 70), "IN2": (MX, MY + 98), "VCC": (MX, MY + 128), "GND": (MX, MY + 156),
+       "OUT1": (MX + 190, MY + 80), "OUT2": (MX + 190, MY + 130)}
+for k, p in drv.items():
+    pin(*p, k, "in-left" if p[0] == MX else "in-right")
+
+# N20 motor + 100 nF across its terminals
+mx_, my_ = 1010, MY + 105
+svg.append(f'<rect x="{mx_ - 30}" y="{my_ - 40}" width="60" height="80" rx="8" fill="#dde" stroke="#334" stroke-width="2"/>')
+svg.append(f'<text x="{mx_}" y="{my_ + 5}" text-anchor="middle" font-size="16" font-weight="bold" fill="#223">M</text>')
+svg.append(f'<text x="{mx_}" y="{my_ + 60}" text-anchor="middle" font-size="12" fill="#223">N20 gear motor</text>')
+wire([drv["OUT1"], (mx_ - 30, drv["OUT1"][1])], PUR)
+wire([drv["OUT2"], (mx_ - 30, drv["OUT2"][1])], PUR)
+cx_ = 945
+svg.append(f'<line x1="{cx_}" y1="{drv["OUT1"][1]}" x2="{cx_}" y2="{my_ - 4}" stroke="#334" stroke-width="2"/>')
+svg.append(f'<line x1="{cx_ - 10}" y1="{my_ - 4}" x2="{cx_ + 10}" y2="{my_ - 4}" stroke="#334" stroke-width="3"/>')
+svg.append(f'<line x1="{cx_ - 10}" y1="{my_ + 4}" x2="{cx_ + 10}" y2="{my_ + 4}" stroke="#334" stroke-width="3"/>')
+svg.append(f'<line x1="{cx_}" y1="{my_ + 4}" x2="{cx_}" y2="{drv["OUT2"][1]}" stroke="#334" stroke-width="2"/>')
+for yy in (drv["OUT1"][1], drv["OUT2"][1]):
+    svg.append(f'<circle cx="{cx_}" cy="{yy}" r="4" fill="#334"/>')
+svg.append(f'<text x="{cx_ + 14}" y="{my_ + 4}" font-size="11" fill="#223">100 nF</text>')
 
 # speaker
 sx, sy = 1060, DY + 120
@@ -120,8 +150,20 @@ wire([(RAILG, usb["GND"][1]), (RAILG, TOPG), (780, TOPG), (780, ring["GND"][1]),
 wire([(760, ring["5V"][1]), (760, df["VCC"][1]), df["VCC"]], RED)
 wire([(780, ring["GND"][1]), (780, df["GND"][1]), df["GND"]], BLK)
 
+# lower rails: cam sensor + motor driver
+wire([(RAIL5, hall["VCC"][1]), (RAIL5, camh["VCC"][1]), camh["VCC"]], RED)
+wire([(RAILG, hall["GND"][1]), (RAILG, camh["GND"][1]), camh["GND"]], BLK)
+wire([(RAIL5, camh["VCC"][1]), (RAIL5, 830), (700, 830), (700, drv["VCC"][1]), drv["VCC"]], RED, "+5 V → VM", at=1)
+wire([(RAILG, camh["GND"][1]), (RAILG, 850), (708, 850), (708, drv["GND"][1]), drv["GND"]], BLK)
+for x, y, c in ((RAIL5, hall["VCC"][1], RED), (RAILG, hall["GND"][1], BLK),
+                (RAIL5, camh["VCC"][1], RED), (RAILG, camh["GND"][1], BLK)):
+    svg.append(f'<circle cx="{x}" cy="{y}" r="5" fill="{c}"/>')
+wire([camh["OUT"], (310, camh["OUT"][1]), (310, nano["A1"][1]), nano["A1"]], GRN)
+wire([nano["D5"], (665, nano["D5"][1]), (665, drv["IN1"][1]), drv["IN1"]], PUR)
+wire([nano["D9"], (655, nano["D9"][1]), (655, drv["IN2"][1]), drv["IN2"]], PUR)
+
 # ---- signals -----------------------------------------------------------------
-wire([hall["OUT"], (300, hall["OUT"][1]), (300, nano["A0"][1]), nano["A0"]], GRN, "OUT → A0", at=1)
+wire([hall["OUT"], (300, hall["OUT"][1]), (300, nano["A0"][1]), nano["A0"]], GRN)
 resistor(700, nano["D6"][1], "330 Ω", YEL)
 wire([nano["D6"], (678, nano["D6"][1])], YEL)
 wire([(722, nano["D6"][1]), (740, nano["D6"][1]), (740, ring["DIN"][1]), ring["DIN"]], YEL, "DATA", at=2)
@@ -132,9 +174,11 @@ resistor(760, df["RX"][1], "1 kΩ", BLU)
 wire([nano["D11"], (680, nano["D11"][1]), (680, df["RX"][1]), (738, df["RX"][1])], BLU)
 wire([(782, df["RX"][1]), df["RX"]], BLU)
 
-svg.append(f'<text x="40" y="{H - 30}" font-size="13" fill="#556">Red = +5 V, black = GND. '
+svg.append(f'<text x="40" y="{H - 32}" font-size="13" fill="#556">Red = +5 V, black = GND. '
            'Keep LED + DFPlayer power wires short and thick-ish (22-24 AWG). '
-           'Hall sensor: SS49E pins left→right (flat face toward you): VCC, GND, OUT.</text>')
+           'SS49E pins left→right (flat face toward you): VCC, GND, OUT.</text>')
+svg.append(f'<text x="40" y="{H - 12}" font-size="13" fill="#556">If the cam turns the wrong way '
+           '(it stalls against the drop and the LEDs blink red), swap the two motor wires or set MOTOR_REVERSE 1.</text>')
 svg.append(f'<text x="40" y="34" font-size="22" font-weight="bold" fill="#223">Mystery Block wiring</text>')
 svg.append("</svg>")
 OUT.parent.mkdir(parents=True, exist_ok=True)
