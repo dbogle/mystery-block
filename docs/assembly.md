@@ -72,7 +72,7 @@ Follow [wiring.md](wiring.md). Placement:
 Do this with the core **upside down** (resting on the column tops), so the tube
 can't fall out.
 
-1. Stick the 4 **felt pads** on the top of the piston **flange**.
+1. Stick the 4 **6 mm bumper dots** on the top of the piston **flange**, evenly spaced and tight against the piston body (that's where the tube end lands).
 2. Drop the **piston** into the tube, head first.
 3. Put an **O-ring** around each **sleeve**, and stand the sleeves on the four
    M4 inserts.

@@ -36,9 +36,10 @@ and the glow, so the block still works if a part is late or dies.
 | 4 | Heat-set inserts | **M4** (≈ 5.6-6 mm OD, ≤ 8 mm long). Holes are 5.6 mm | (same kit) | ↑ get a kit with M3 + M4 |
 | 16 | Screws | **M3 × 8 button head** (ISO 7380) | $8 / kit | [search](https://www.amazon.com/s?k=m3+button+head+screw+assortment) |
 | 4 | Screws | **M4 × 30 button head** (ISO 7380) | (same kit) | ↑ get a kit with M3 + M4 |
+| 4 | Washers | **M4 fender / penny washer, 12 mm OD, ~1 mm thick** | $6 / kit | [search](https://www.amazon.com/s?k=m4+fender+washer+12mm) |
 | 9 | Magnets | **6 × 3 mm** neodymium discs (8 for the lid, 1 for the hit sensor) | $8 / 50 | [search](https://www.amazon.com/s?k=6x3mm+neodymium+magnets) |
 | 4 | O-rings | **8 mm ID × 2 mm** cross-section (nitrile kit) | $8 / kit | [search](https://www.amazon.com/s?k=o+ring+assortment+kit+nitrile) |
-| 4 | Felt or silicone pads | ~10 mm round, 2 mm thick, self-adhesive | $5 | [search](https://www.amazon.com/s?k=10mm+self+adhesive+felt+pads) |
+| 4 | Felt or silicone bumper dots | **6 mm round, ~2 mm thick**, self-adhesive (they sit on the 6 mm wide piston flange) | $6 | [search](https://www.amazon.com/s?k=6mm+self+adhesive+bumper+pads) |
 | 2 | Wall screws + anchors | #8 / 4 mm wood screws or drywall anchors (only for wall mounting) | – | any |
 
 ## 3. Payload (pick one or mix)
