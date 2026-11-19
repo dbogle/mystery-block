@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="640" viewBox="0 0 1100 640" font-family="Helvetica, Arial, sans-serif">
+<rect width="1100" height="640" fill="#ffffff"/>
+<rect x="430" y="170" width="220" height="300" rx="10" fill="#f4f6fa" stroke="#334" stroke-width="2"/>
+<text x="540.0" y="196" text-anchor="middle" font-size="17" font-weight="bold" fill="#223">Arduino Nano</text>
+<text x="540.0" y="216" text-anchor="middle" font-size="12" fill="#556">ATmega328P, 5 V</text>
+<circle cx="430" cy="260" r="4.5" fill="#334"/>
+<text x="440" y="264" text-anchor="start" font-size="13" fill="#223">5V</text>
+<circle cx="430" cy="310" r="4.5" fill="#334"/>
+<text x="440" y="314" text-anchor="start" font-size="13" fill="#223">GND</text>
+<circle cx="430" cy="410" r="4.5" fill="#334"/>
+<text x="440" y="414" text-anchor="start" font-size="13" fill="#223">A0</text>
+<circle cx="650" cy="260" r="4.5" fill="#334"/>
+<text x="640" y="264" text-anchor="end" font-size="13" fill="#223">D6</text>
+<circle cx="650" cy="310" r="4.5" fill="#334"/>
+<text x="640" y="314" text-anchor="end" font-size="13" fill="#223">D4</text>
+<circle cx="650" cy="360" r="4.5" fill="#334"/>
+<text x="640" y="364" text-anchor="end" font-size="13" fill="#223">D10 (RX)</text>
+<circle cx="650" cy="410" r="4.5" fill="#334"/>
+<text x="640" y="414" text-anchor="end" font-size="13" fill="#223">D11 (TX)</text>
+<rect x="40" y="70" width="190" height="120" rx="10" fill="#eef7ee" stroke="#334" stroke-width="2"/>
+<text x="135.0" y="96" text-anchor="middle" font-size="17" font-weight="bold" fill="#223">USB-C jack</text>
+<text x="135.0" y="116" text-anchor="middle" font-size="12" fill="#556">power only, panel mount</text>
+<text x="135.0" y="132" text-anchor="middle" font-size="12" fill="#556">5 V ≥ 2 A adapter</text>
+<circle cx="230" cy="150" r="4.5" fill="#334"/>
+<text x="220" y="154" text-anchor="end" font-size="13" fill="#223">VBUS</text>
+<circle cx="230" cy="174" r="4.5" fill="#334"/>
+<text x="220" y="178" text-anchor="end" font-size="13" fill="#223">GND</text>
+<rect x="40" y="380" width="190" height="150" rx="10" fill="#eef3fb" stroke="#334" stroke-width="2"/>
+<text x="135.0" y="406" text-anchor="middle" font-size="17" font-weight="bold" fill="#223">SS49E Hall</text>
+<text x="135.0" y="426" text-anchor="middle" font-size="12" fill="#556">under the deck, flat face</text>
+<text x="135.0" y="442" text-anchor="middle" font-size="12" fill="#556">toward the panel magnet</text>
+<circle cx="230" cy="464" r="4.5" fill="#334"/>
+<text x="220" y="468" text-anchor="end" font-size="13" fill="#223">VCC</text>
+<circle cx="230" cy="488" r="4.5" fill="#334"/>
+<text x="220" y="492" text-anchor="end" font-size="13" fill="#223">GND</text>
+<circle cx="230" cy="512" r="4.5" fill="#334"/>
+<text x="220" y="516" text-anchor="end" font-size="13" fill="#223">OUT</text>
+<rect x="820" y="300" width="200" height="230" rx="10" fill="#fbf3ee" stroke="#334" stroke-width="2"/>
+<text x="920.0" y="326" text-anchor="middle" font-size="17" font-weight="bold" fill="#223">DFPlayer Mini</text>
+<text x="920.0" y="346" text-anchor="middle" font-size="12" fill="#556">microSD: /01/001.wav …</text>
+<circle cx="820" cy="380" r="4.5" fill="#334"/>
+<text x="830" y="384" text-anchor="start" font-size="13" fill="#223">VCC</text>
+<circle cx="820" cy="410" r="4.5" fill="#334"/>
+<text x="830" y="414" text-anchor="start" font-size="13" fill="#223">GND</text>
+<circle cx="820" cy="440" r="4.5" fill="#334"/>
+<text x="830" y="444" text-anchor="start" font-size="13" fill="#223">BUSY</text>
+<circle cx="820" cy="470" r="4.5" fill="#334"/>
+<text x="830" y="474" text-anchor="start" font-size="13" fill="#223">TX</text>
+<circle cx="820" cy="500" r="4.5" fill="#334"/>
+<text x="830" y="504" text-anchor="start" font-size="13" fill="#223">RX</text>
+<circle cx="1020" cy="400" r="4.5" fill="#334"/>
+<text x="1010" y="404" text-anchor="end" font-size="13" fill="#223">SPK1</text>
+<circle cx="1020" cy="440" r="4.5" fill="#334"/>
+<text x="1010" y="444" text-anchor="end" font-size="13" fill="#223">SPK2</text>
+<rect x="820" y="50" width="200" height="150" rx="10" fill="#fff8e6" stroke="#334" stroke-width="2"/>
+<text x="920.0" y="76" text-anchor="middle" font-size="17" font-weight="bold" fill="#223">WS2812B ring</text>
+<text x="920.0" y="96" text-anchor="middle" font-size="12" fill="#556">24 LEDs around the tube top</text>
+<circle cx="820" cy="130" r="4.5" fill="#334"/>
+<text x="830" y="134" text-anchor="start" font-size="13" fill="#223">5V</text>
+<circle cx="820" cy="155" r="4.5" fill="#334"/>
+<text x="830" y="159" text-anchor="start" font-size="13" fill="#223">GND</text>
+<circle cx="820" cy="180" r="4.5" fill="#334"/>
+<text x="830" y="184" text-anchor="start" font-size="13" fill="#223">DIN</text>
+<rect x="1048" y="402" width="14" height="36" fill="#ccd" stroke="#334" stroke-width="2"/>
+<polygon points="1062,402 1084,384 1084,456 1062,438" fill="#ccd" stroke="#334" stroke-width="2"/>
+<text x="1068" y="478" text-anchor="middle" font-size="12" fill="#223">40 mm 3 W</text>
+<polyline points="1020,400 1048,400 1048,412" fill="none" stroke="#7b3fbf" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="1020,440 1048,440 1048,428" fill="none" stroke="#7b3fbf" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="230,150 330,150 330,464 230,464" fill="none" stroke="#d62828" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="280.0" y="143.0" text-anchor="middle" font-size="12" fill="#d62828" font-weight="bold">+5 V</text>
+<polyline points="230,174 360,174 360,488 230,488" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="295.0" y="167.0" text-anchor="middle" font-size="12" fill="#222222" font-weight="bold">GND</text>
+<polyline points="330,260 430,260" fill="none" stroke="#d62828" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="360,310 430,310" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="330" cy="260" r="5" fill="#d62828"/>
+<circle cx="360" cy="310" r="5" fill="#222222"/>
+<line x1="330" y1="300" x2="338" y2="300" stroke="#d62828" stroke-width="3"/>
+<rect x="338" y="288" width="6" height="24" fill="#334"/>
+<rect x="347" y="288" width="6" height="24" fill="#fff" stroke="#334" stroke-width="2"/>
+<line x1="353" y1="300" x2="360" y2="300" stroke="#222222" stroke-width="3"/>
+<text x="345" y="282" text-anchor="middle" font-size="12" fill="#223">1000 µF</text>
+<polyline points="330,150 330,130 760,130 760,130 820,130" fill="none" stroke="#d62828" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="360,174 360,150 780,150 780,155 820,155" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="760,130 760,380 820,380" fill="none" stroke="#d62828" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="780,155 780,410 820,410" fill="none" stroke="#222222" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="230,512 300,512 300,410 430,410" fill="none" stroke="#2a9d4b" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="300.0" y="454.0" text-anchor="middle" font-size="12" fill="#2a9d4b" font-weight="bold">OUT → A0</text>
+<rect x="678" y="252" width="44" height="16" rx="3" fill="#f3e3c4" stroke="#e0a800" stroke-width="2.5"/>
+<text x="700" y="247" text-anchor="middle" font-size="12" fill="#223">330 Ω</text>
+<polyline points="650,260 678,260" fill="none" stroke="#e0a800" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="722,260 740,260 740,180 820,180" fill="none" stroke="#e0a800" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="780.0" y="173.0" text-anchor="middle" font-size="12" fill="#e0a800" font-weight="bold">DATA</text>
+<polyline points="650,310 720,310 720,440 820,440" fill="none" stroke="#f07f13" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="690" y="302" text-anchor="middle" font-size="11" fill="#f07f13">BUSY (optional)</text>
+<polyline points="650,360 700,360 700,470 820,470" fill="none" stroke="#1d6fd1" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<rect x="738" y="492" width="44" height="16" rx="3" fill="#f3e3c4" stroke="#1d6fd1" stroke-width="2.5"/>
+<text x="760" y="487" text-anchor="middle" font-size="12" fill="#223">1 kΩ</text>
+<polyline points="650,410 680,410 680,500 738,500" fill="none" stroke="#1d6fd1" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<polyline points="782,500 820,500" fill="none" stroke="#1d6fd1" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+<text x="40" y="610" font-size="13" fill="#556">Red = +5 V, black = GND. Keep LED + DFPlayer power wires short and thick-ish (22-24 AWG). Hall sensor: SS49E pins left→right (flat face toward you): VCC, GND, OUT.</text>
+<text x="40" y="34" font-size="22" font-weight="bold" fill="#223">Mystery Block wiring</text>
+</svg>
