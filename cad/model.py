@@ -238,6 +238,55 @@ MOTOR_Y0 = LEVER_W / 2 + 1.0        # gearbox face (shaft points -Y)
 CAM_SENSOR = (CAM_X, -(CAM_W / 2 + 1.2), CAM_Z + CAM_MAG_R)
 
 
+def lever_clear(pts, theta):
+    """True if no cam profile point (world x, z) is inside the lever at angle
+    theta. Models the parts of the lever the cam can reach: the one-sided
+    follower nose (quarter round on the tip side, vertical face toward the
+    pivot so the cam corner drops off it at once), the relieved top around it
+    and the full-height top further out."""
+    c, s_ = cos(theta), sin(theta)
+    top = LEVER_T / 2
+    for px, pz in pts:
+        dx, dz = px - PIV_X, pz - PIV_Z
+        u, w = dx * c + dz * s_, -dx * s_ + dz * c      # lever frame
+        if u > TIP_X - PIV_X:
+            continue
+        if NOSE_D <= u <= NOSE_D + NOSE_R:              # nose
+            if w < top or (u - NOSE_D) ** 2 + (w - top) ** 2 < NOSE_R ** 2:
+                return False
+            continue
+        h = top - LEVER_RELIEF if abs(u - NOSE_D) < RELIEF_W else top
+        if w < h:
+            return False
+    return True
+
+
+def cam_points(beta, n=1440):
+    """Cam profile (world x, z) at rotation beta (deg), plus the drop corner."""
+    pts = []
+    for i in range(n):
+        psi = 360.0 * i / n
+        r = cam_radius(psi)
+        a = radians(psi - beta)  # rotation about +Y turns the XZ profile by -beta
+        pts.append((CAM_X + r * cos(a), CAM_Z + r * sin(a)))
+    a = radians(CAM_DROP - beta)
+    pts.append((CAM_X + CAM_R1 * cos(a), CAM_Z + CAM_R1 * sin(a)))
+    return pts
+
+
+def lever_angle_for_cam(beta):
+    """Highest lever angle (rad) the cam allows at rotation beta (deg), capped
+    by the up-stop. The spring holds the lever there."""
+    pts = cam_points(beta)
+    lo, hi = THETA_COCKED - 0.1, THETA_UP
+    if lever_clear(pts, hi):
+        return hi
+    for _ in range(36):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if lever_clear(pts, mid) else (lo, mid)
+    return lo
+
+
 def cam_radius(psi):
     psi %= 360.0
     if psi < CAM_RISE:
@@ -353,7 +402,16 @@ def make_lever():
     lev = hub + bar + (end & box(L - 3, L, -LEVER_W, LEVER_W, -LEVER_T, LEVER_T))
     lev = lev + box(L - 3, L, -LEVER_W / 2, LEVER_W / 2, 0, LEVER_T / 2)  # flat top at tip
     lev = lev - Rot(90, 0, 0) * Cylinder(1.65, LEVER_W + 2)              # axle
-    lev = lev + Pos(NOSE_D, 0, LEVER_T / 2) * Rot(90, 0, 0) * Cylinder(NOSE_R, LEVER_W)
+    # relief around the nose: the cam corner passes over it after the drop
+    lev = lev - box(NOSE_D - RELIEF_W, NOSE_D + RELIEF_W, -LEVER_W, LEVER_W,
+                    LEVER_T / 2 - LEVER_RELIEF, LEVER_T)
+    # one-sided follower nose: quarter round toward the tip, vertical face
+    # toward the pivot (the cam drops off it instantly)
+    q = Pos(NOSE_D, 0, LEVER_T / 2) * Rot(90, 0, 0) * Cylinder(NOSE_R, LEVER_W)
+    q = q & box(NOSE_D, NOSE_D + NOSE_R, -LEVER_W, LEVER_W, LEVER_T / 2, LEVER_T)
+    post = box(NOSE_D, NOSE_D + NOSE_R, -LEVER_W / 2, LEVER_W / 2,
+               LEVER_T / 2 - LEVER_RELIEF - 0.01, LEVER_T / 2 + 0.01)
+    lev = lev + q + post
     d = SPRING_X - PIV_X
     lev = lev - cyl(5.6, -LEVER_T / 2 - 1, -LEVER_T / 2 + 2.0, d, 0)      # spring cup
     return lev

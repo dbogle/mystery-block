@@ -1,0 +1,381 @@
+<meta charset="utf-8">
+<title>Mystery Block in 3D</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Silkscreen&display=swap">
+<style>
+[hidden] { display: none !important; }
+/* Layout: one stage (the 3D view) with a mode switch above and the live caption + controls below. */
+:root {
+  --bg: #eef1f6;
+  --panel: #ffffff;
+  --fg: #1b2230;
+  --muted: #5b6577;
+  --line: #d5dbe6;
+  --accent: #f2a90f;      /* block gold */
+  --accent-ink: #3a2500;
+  --stage: #dfe5ee;
+  --hit: #e2543a;
+  --font-display: "Silkscreen", "Courier New", monospace;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --panel: #1b212b; --fg: #e8ecf3; --muted: #9aa5b8; --line: #2c3442;
+    --accent: #f5b42a; --accent-ink: #2a1a00; --stage: #1a2029; --hit: #ff6b50; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --panel: #1b212b; --fg: #e8ecf3; --muted: #9aa5b8; --line: #2c3442;
+  --accent: #f5b42a; --accent-ink: #2a1a00; --stage: #1a2029; --hit: #ff6b50; color-scheme: dark;
+}
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 15px; line-height: 1.5;
+}
+.wrap {
+  max-width: 1080px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 32px;
+  display: grid; gap: 14px;
+}
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+h1 { font-family: var(--font-display); font-weight: 400; font-size: clamp(22px, 4vw, 32px); margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+h1 span { color: var(--accent); }
+.sub { margin: 2px 0 0; color: var(--muted); max-width: 60ch; }
+.modes { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 3px; gap: 2px; }
+.modes button {
+  font: 600 14px var(--font-body); color: var(--muted); background: none; border: 0; border-radius: 7px;
+  padding: 7px 14px; cursor: pointer;
+}
+.modes button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.modes button:focus-visible, .ctl button:focus-visible, .ctl input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.stage {
+  position: relative; width: 100%; aspect-ratio: 4 / 3; max-height: 72vh; max-width: 100%;
+  background: var(--stage); border-radius: 12px; overflow: hidden; border: 1px solid var(--line);
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.loading { position: absolute; inset: 0; display: grid; place-items: center; color: var(--muted); font-family: var(--font-display); }
+.caption {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; pointer-events: none;
+  display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+}
+.caption .pill {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px;
+  font-size: 14px; max-width: 100%; box-shadow: 0 2px 10px rgb(0 0 0 / 0.08);
+}
+.caption .pill b { font-family: var(--font-display); font-weight: 400; color: var(--hit); margin-right: 6px; letter-spacing: 0.04em; }
+.time { position: absolute; top: 10px; right: 12px; font: 500 12px var(--font-body); color: var(--muted); font-variant-numeric: tabular-nums; }
+.ctl { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.ctl button {
+  font: 600 14px var(--font-body); background: var(--panel); color: var(--fg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 14px; cursor: pointer;
+}
+.ctl button.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.ctl label { display: inline-flex; gap: 8px; align-items: center; color: var(--muted); font-size: 14px; }
+.ctl input[type=range] { width: min(260px, 60vw); accent-color: var(--accent); }
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.note { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; min-width: 0; }
+.note h2 { font: 600 13px var(--font-body); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 4px; }
+.note p { margin: 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--muted); font-size: 13px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+@media (prefers-reduced-motion: reduce) { .modes button { transition: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>Mystery <span>?</span> Block</h1>
+      <p class="sub">The real CAD model, animated. Drag to orbit, scroll or pinch to zoom.</p>
+    </div>
+    <div class="modes" role="group" aria-label="View">
+      <button id="m-hit" aria-pressed="true">Hit it</button>
+      <button id="m-explode" aria-pressed="false">Exploded</button>
+      <button id="m-inside" aria-pressed="false">Inside</button>
+    </div>
+  </header>
+
+  <div class="stage" id="stage">
+    <div class="loading" id="loading">Loading parts…</div>
+    <div class="time" id="time"></div>
+    <div class="caption"><div class="pill" id="caption">&nbsp;</div></div>
+  </div>
+
+  <div class="ctl" id="ctl-anim">
+    <button class="primary" id="play">Pause</button>
+    <button id="hitbtn">Hit it now</button>
+    <label><input type="checkbox" id="slow"> Slow motion (¼ speed)</label>
+    <label id="cut-wrap" hidden><input type="checkbox" id="cut" checked> Cut in half</label>
+  </div>
+  <div class="ctl" id="ctl-explode" hidden>
+    <button class="primary" id="assemble">Play the build</button>
+    <label>Spread <input type="range" id="spread" min="0" max="100" value="100"></label>
+  </div>
+
+  <div class="legend" id="legend"></div>
+
+  <div class="notes">
+    <div class="note"><h2>Hit it</h2><p>The bottom panel only senses the hit. The motor turns the cam past its cliff, the spring snaps the lever up, and the capsule pops out of the top. Same height every time.</p></div>
+    <div class="note"><h2>Exploded</h2><p>Every printed part in its place, then flown in in the order of the assembly guide: deck, hit panel, launcher, tube, hopper, walls, lid.</p></div>
+    <div class="note"><h2>Inside</h2><p>The block cut in half through the launch tube. Turn on slow motion to watch the cam load the spring and the one-capsule chamber refill.</p></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(async function () {
+  const $ = (id) => document.getElementById(id);
+  const stage = $("stage");
+  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  // ---------- scene ----------
+  const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.localClippingEnabled = true;
+  stage.prepend(renderer.domElement);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(32, 4 / 3, 5, 5000);
+  camera.up.set(0, 0, 1);
+  const controls = new THREE.OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a93a6, 1.05));
+  const sun = new THREE.DirectionalLight(0xffffff, 0.75); sun.position.set(-300, -500, 700); sun.intensity = 0.7; scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.3); fill.position.set(500, 300, 200); fill.intensity = 0.45; scene.add(fill);
+
+  function themeBg() { scene.background = new THREE.Color(css("--stage") || "#dfe5ee"); }
+  themeBg();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", themeBg);
+  new MutationObserver(themeBg).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+  function resize() {
+    const r = stage.getBoundingClientRect();
+    renderer.setSize(r.width, r.height, false);
+    camera.aspect = r.width / r.height; camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage); resize();
+
+  // ---------- load meshes ----------
+  let meta, bin;
+  try {
+    meta = await fetch("model.json").then((r) => r.json());
+    const raw = atob(meta.data), u8 = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) u8[i] = raw.charCodeAt(i);
+    bin = u8.buffer;
+  } catch (e) {
+    $("loading").textContent = "Couldn't load model.json.";
+    return;
+  }
+  $("loading").hidden = true;
+
+  const clipFront = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0); // keeps y > 0
+  const parts = {};
+  for (const p of meta.parts) {
+    const pos = new Float32Array(bin, p.v[0], p.v[1] * 3);
+    const idx = new Uint32Array(bin, p.i[0], p.i[1]);
+    let g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    g.setIndex(new THREE.BufferAttribute(idx, 1));
+    g = g.toNonIndexed(); g.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(p.color), roughness: 0.62, metalness: 0.02,
+      side: THREE.DoubleSide, flatShading: true,
+    });
+    if (p.name === "tube") { mat.transparent = true; mat.opacity = 0.55; mat.depthWrite = false; }
+    const mesh = new THREE.Mesh(g, mat);
+    const holder = new THREE.Group(); holder.add(mesh);
+    const base = new THREE.Vector3(...(p.pivot || [0, 0, 0]));
+    holder.position.copy(base);
+    scene.add(holder);
+    parts[p.name] = { p, mesh, holder, base, mat, explode: new THREE.Vector3(...p.explode) };
+  }
+  const ballMat = () => new THREE.MeshStandardMaterial({ color: new THREE.Color(meta.colors.ball), roughness: 0.35, transparent: true, side: THREE.DoubleSide });
+  const ballGeo = new THREE.SphereGeometry(meta.ball_d / 2, 40, 24);
+  const ball = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball);
+  const ball2 = new THREE.Mesh(ballGeo, ballMat()); scene.add(ball2);
+  const allMats = Object.values(parts).map((x) => x.mat).concat([ball.material, ball2.material]);
+
+  // hit ring under the panel
+  const ring = new THREE.Mesh(new THREE.RingGeometry(30, 34, 64), new THREE.MeshBasicMaterial({ color: new THREE.Color(css("--hit") || "#e2543a"), transparent: true, side: THREE.DoubleSide }));
+  ring.position.set(0, 0, -6); scene.add(ring);
+
+  // legend
+  const legend = [["body", "Printed shell"], ["inner", "Internals"], ["moving", "Moving parts"], ["tube", "Launch tube"], ["motor", "N20 motor"], ["ball", "Capsule"]];
+  $("legend").innerHTML = legend.map(([k, t]) => `<span><i style="background:${meta.colors[k]}"></i>${t}</span>`).join("");
+
+  // ---------- kinematics ----------
+  const D2R = Math.PI / 180;
+  const T = meta.lever_table;                       // deg about +Y, every 2 deg of cam
+  const leverAt = (beta) => {
+    const b = ((beta % 360) + 360) % 360, i = Math.floor(b / 2), f = b / 2 - i;
+    return T[i] + (T[Math.min(i + 1, T.length - 1)] - T[i]) * f;
+  };
+  const COCK = T[Math.round(meta.beta_cocked / 2)], UP = Math.min(...T);
+  const LEVER_LEN = 74, TIP_STROKE = 14;            // tip travel per params.py
+  const RPM_DEG = 300;                              // 50 RPM = 300 deg/s
+  const B0 = meta.beta_cocked;
+  let fireBeta = B0; while (leverAt(fireBeta) > UP + 0.01 && fireBeta < B0 + 120) fireBeta += 0.25;
+  const HIT_T = 0.35, MOTOR_T = HIT_T + 0.05;
+  const FIRE_T = MOTOR_T + (fireBeta - B0) / RPM_DEG;
+  const KICK = 0.02, V0 = 1900, G = 9810;           // mm/s, mm/s^2
+  const CYCLE = 3.2;
+  const tipLift = (a) => Math.max(0, (TIP_STROKE * (COCK - a)) / (COCK - UP) - (TIP_STROKE - meta.lift));
+  const ease = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x));
+
+  function cycleState(t) {
+    const s = {};
+    // hit panel: up 4 mm and back
+    const h = t - HIT_T;
+    s.panel = h < 0 ? 0 : h < 0.06 ? meta.stroke * ease(h / 0.06) : h < 0.2 ? meta.stroke * (1 - ease((h - 0.06) / 0.14)) : 0;
+    s.ring = h >= 0 && h < 0.5 ? h / 0.5 : -1;
+    // cam turns one revolution after the hit
+    const run = Math.max(0, Math.min(360, (t - MOTOR_T) * RPM_DEG));
+    s.beta = B0 + run;
+    s.lever = leverAt(s.beta);
+    // piston: kicked to the lip, then falls back onto the lever tip
+    const support = tipLift(s.lever);
+    let free = 0;
+    const k = t - FIRE_T;
+    if (k > 0) {
+      const top = meta.lift + meta.coast;
+      free = k < KICK ? top * (k / KICK) : Math.max(0, top - 0.5 * G * (k - KICK) ** 2);
+    }
+    s.piston = Math.max(support, free);
+    // capsule: rides the piston, then flies
+    const z0 = meta.ball_z;
+    if (k > KICK) {
+      const tau = k - KICK;
+      s.ball = [0, -140 * tau, z0 + meta.lift + meta.coast + V0 * tau - 0.5 * G * tau * tau];
+      s.ballFade = s.ball[2] < meta.size + 20 && tau > 0.2 ? Math.max(0, (s.ball[2] - (meta.size - 40)) / 60) : 1;
+    } else { s.ball = [0, 0, z0 + s.piston]; s.ballFade = 1; }
+    // next capsule rolls in once the piston is seated again
+    const seatedAt = MOTOR_T + 1.2 * 0.25;          // lever lowers the piston early in the turn
+    const r = (t - Math.max(seatedAt, FIRE_T + 0.35)) / 0.35;
+    const wait = [0, 34, z0 + 9];
+    s.ball2 = r <= 0 ? wait : r >= 1 ? [0, 0, z0] : [0, wait[1] * (1 - ease(r)), z0 + 9 * (1 - ease(r))];
+    s.phase = t < HIT_T ? 0 : t < FIRE_T ? 1 : t < FIRE_T + 0.45 ? 2 : run < 360 ? 3 : 4;
+    return s;
+  }
+  const PHASES = [
+    ["READY", "Waiting with the spring already loaded."],
+    ["HIT", "The panel moves 4 mm. The Hall sensor sees it and starts the motor."],
+    ["POP", "The cam drops off the nose. The spring snaps the lever into the piston."],
+    ["RELOAD", "The motor keeps turning. The cam loads the spring again."],
+    ["READY", "Parked on the cam magnet. The next capsule has rolled in."],
+  ];
+
+  function applyCycle(s) {
+    parts.hit_panel.holder.position.z = s.panel;
+    parts.lever.holder.rotation.y = s.lever * D2R;
+    parts.cam.holder.rotation.y = s.beta * D2R;
+    parts.piston.holder.position.z = s.piston;
+    ball.position.set(...s.ball); ball.material.opacity = s.ballFade; ball.visible = s.ballFade > 0.01;
+    ball2.position.set(...s.ball2); ball2.visible = true;
+    ring.visible = s.ring >= 0;
+    if (s.ring >= 0) { const sc = 1 + s.ring * 1.6; ring.scale.set(sc, sc, 1); ring.material.opacity = 1 - s.ring; }
+  }
+  function resetPose() {
+    applyCycle(cycleState(0));
+  }
+
+  // ---------- exploded ----------
+  const ORDER = [
+    ["chassis", "Deck"], ["sleeves", "Hit panel"], ["hit_panel", "Hit panel"], ["lever", "Spring lever"],
+    ["motor", "Motor"], ["cam", "Cam"], ["piston", "Piston"], ["tower", "Tower"], ["tube", "Launch tube"],
+    ["hopper", "Hopper"], ["led_collar", "LED collar"],
+    ["wall_back", "Walls"], ["wall_right", "Walls"], ["wall_front", "Walls"], ["wall_left", "Walls"],
+    ["caps_back", "Rivet caps"], ["lid", "Lid"], ["caps_lid", "Lid"],
+  ];
+  const step = {};
+  ORDER.forEach(([n], i) => (step[n] = i));
+  for (const side of ["front", "back", "left", "right"]) {
+    step["glyph_" + side] = step["shadow_" + side] = step["wall_" + side];
+    step["caps_" + side] = step.caps_back;
+  }
+  const NSTEP = ORDER.length;
+  function applyExplode(amountFor) {
+    for (const [name, x] of Object.entries(parts)) {
+      const a = amountFor(name);
+      x.holder.position.copy(x.base).addScaledVector(x.explode, a);
+    }
+    parts.lever.holder.rotation.y = COCK * D2R; parts.cam.holder.rotation.y = B0 * D2R;
+    const ba = amountFor("piston");
+    ball.position.set(0, 0, meta.ball_z + parts.piston.explode.z * ba);
+    ball.material.opacity = 1; ball.visible = true; ball2.visible = false; ring.visible = false;
+  }
+
+  // ---------- modes ----------
+  let mode = "hit", playing = !reduced, clock = 0, last = performance.now();
+  let spread = 1, building = false, buildT = 0;
+  const shellNames = Object.keys(parts).filter((n) => /^(wall|glyph|shadow|caps|lid)/.test(n));
+  function setClip(on) {
+    for (const m of allMats) { m.clippingPlanes = on ? [clipFront] : []; m.needsUpdate = true; }
+  }
+  const VIEWS = {
+    hit: { pos: [320, -640, 250], target: [0, 0, 150] },
+    explode: { pos: [700, -920, 640], target: [0, 0, 165] },
+    inside: { pos: [30, -380, 100], target: [-15, 0, 85] },
+  };
+  function setMode(m) {
+    mode = m;
+    for (const b of ["hit", "explode", "inside"]) $("m-" + b).setAttribute("aria-pressed", String(b === m));
+    $("ctl-anim").hidden = m === "explode";
+    $("ctl-explode").hidden = m !== "explode";
+    $("cut-wrap").hidden = m !== "inside";
+    for (const n of shellNames) parts[n].holder.visible = m !== "inside";
+    parts.led_collar.holder.visible = true;
+    setClip(m === "inside" && $("cut").checked);
+    const v = VIEWS[m];
+    camera.position.set(...v.pos); controls.target.set(...v.target); controls.update();
+    for (const x of Object.values(parts)) x.holder.position.copy(x.base);
+    if (m === "inside") $("slow").checked = true;
+    if (m === "explode") { spread = 1; $("spread").value = 100; building = !reduced; buildT = 0; }
+    clock = 0;
+  }
+  $("m-hit").onclick = () => setMode("hit");
+  $("m-explode").onclick = () => setMode("explode");
+  $("m-inside").onclick = () => setMode("inside");
+  $("cut").onchange = () => setClip($("cut").checked);
+  $("play").onclick = () => { playing = !playing; $("play").textContent = playing ? "Pause" : "Play"; };
+  $("hitbtn").onclick = () => { clock = HIT_T - 0.15; if (!playing) { playing = true; $("play").textContent = "Pause"; } };
+  $("assemble").onclick = () => { building = true; buildT = 0; playing = true; $("play").textContent = "Pause"; };
+  $("spread").oninput = (e) => { building = false; spread = e.target.value / 100; };
+  if (!playing) $("play").textContent = "Play";
+
+  function frame(now) {
+    const dt = Math.min(0.05, (now - last) / 1000); last = now;
+    if (mode === "explode") {
+      if (building) {
+        if (playing) buildT += dt;
+        const total = 0.55 * NSTEP + 1.2;
+        const u = buildT;                                  // seconds into the build
+        const amountFor = (name) => 1 - ease((u - 0.6 - 0.55 * (step[name] ?? 0)) / 0.7);
+        applyExplode(amountFor);
+        const cur = ORDER[Math.min(NSTEP - 1, Math.max(0, Math.floor((u - 0.6) / 0.55)))];
+        $("caption").innerHTML = u < total ? `<b>BUILD</b>${cur[1]}` : `<b>DONE</b>All ${meta.parts.length} parts in place.`;
+        if (u > total + 2.5) { building = false; spread = 1; $("spread").value = 100; }
+      } else {
+        applyExplode(() => spread);
+        $("caption").innerHTML = `<b>PARTS</b>Drag the spread slider, or play the build.`;
+      }
+      $("time").textContent = "";
+    } else {
+      const speed = $("slow").checked ? 0.25 : 1;
+      if (playing) clock = (clock + dt * speed) % CYCLE;
+      const s = cycleState(clock);
+      applyCycle(s);
+      const [tag, text] = PHASES[s.phase];
+      $("caption").innerHTML = `<b>${tag}</b>${text}`;
+      $("time").textContent = `t = ${(clock - HIT_T >= 0 ? clock - HIT_T : 0).toFixed(2)} s after the hit` + (speed < 1 ? " · ¼ speed" : "");
+    }
+    controls.update();
+    renderer.render(scene, camera);
+    requestAnimationFrame(frame);
+  }
+  setMode("hit");
+  window.__viewer = { setMode, cycleState, applyCycle, renderer, scene, camera, controls, parts, setClock: (t) => (clock = t), setPlaying: (p) => (playing = p), setBuild: (t) => { building = true; buildT = t; }, applyExplode, ORDER, step, ease };
+  requestAnimationFrame(frame);
+})();
+</script>

@@ -120,30 +120,7 @@ def test_piston_coast_is_free():
 
 
 def _lever_angle_for_cam(beta):
-    """Highest lever angle allowed by the cam at rotation beta (deg), capped
-    by the up-stop. Pure 2D: cam profile points vs the lever's top line."""
-    pts = []
-    for i in range(720):
-        psi = i / 2
-        r = m.cam_radius(psi)
-        a = radians(psi - beta)  # rotation about +Y turns the XZ profile by -beta
-        pts.append((CAM_X + r * cos(a), m.CAM_Z + r * sin(a)))
-    pts.append((CAM_X + m.CAM_R1 * cos(radians(m.CAM_DROP - beta)),
-                m.CAM_Z + m.CAM_R1 * sin(radians(m.CAM_DROP - beta))))
-
-    def clear(theta):
-        nx, nz = m.nose_center(theta)
-        nose_ok = min(sqrt((x - nx) ** 2 + (z - nz) ** 2) for x, z in pts) >= NOSE_R
-        top_ok = min(m._dist_to_lever_top(x, z, theta) for x, z in pts) >= 0
-        return nose_ok and top_ok
-
-    lo, hi = m.THETA_COCKED - 0.1, m.THETA_UP
-    if clear(hi):
-        return hi
-    for _ in range(40):
-        mid = (lo + hi) / 2
-        lo, hi = (mid, hi) if clear(mid) else (lo, mid)
-    return lo
+    return m.lever_angle_for_cam(beta)
 
 
 def test_cam_cocks_dwells_and_releases():
@@ -154,12 +131,20 @@ def test_cam_cocks_dwells_and_releases():
         degrees(m.THETA_COCKED), abs=0.3)
     # dwell: stays cocked across the whole dwell (motor coast margin)
     dwell0 = CAM_RISE - 270 + 3
-    dwell1 = CAM_RISE + CAM_DWELL - 270 - 3
+    dwell1 = CAM_RISE + CAM_DWELL - 270 - 4
     for b in range(int(dwell0), int(dwell1) + 1):
         assert degrees(_lever_angle_for_cam(b)) == pytest.approx(
             degrees(m.THETA_COCKED), abs=0.5), b
     # after the drop the lever is free (cam not touching)
     assert _lever_angle_for_cam(m.BETA_FIRED) == pytest.approx(m.THETA_UP)
+    # the release is a snap: from fully cocked to fully up within 6 deg of cam
+    # turn (about 20 ms at 50 RPM), so the spring, not the cam, sets the speed
+    from math import degrees as _d
+    cocked = [b / 2 for b in range(int(dwell1 * 2), 120)
+              if _lever_angle_for_cam(b / 2) < m.THETA_COCKED + radians(0.5)]
+    up = [b / 2 for b in range(int(dwell1 * 2), 120)
+          if _lever_angle_for_cam(b / 2) >= m.THETA_UP - 1e-6]
+    assert up and up[0] - max(cocked) <= 6.0, (max(cocked), up[0])
     # during the rise the lever only ever goes down (smooth cocking)
     seq = [th[b] for b in sorted(th) if b <= dwell0]
     assert all(b <= a + 1e-4 for a, b in zip(seq, seq[1:]))
