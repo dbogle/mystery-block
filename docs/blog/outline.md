@@ -1,10 +1,10 @@
-# Blog post draft: "I built a real-life ? block that shoots candy"
+# Blog post draft: "I built a real-life ? block that serves up candy"
 
 Working outline. Photo names refer to `images/photos/`.
 
 ## 1. Hook (hero video)
-* Slow-mo of a kid bonking the block and a capsule flying out. (`08-first-launch.mp4`)
-* One sentence: a 3D-printed "?" block that pops a mystery capsule out of the top when you hit it, the same height every time.
+* A kid bonks the block and a capsule rises out of the top. (`08-first-lift.mp4`)
+* One sentence: a 3D-printed "?" block that lifts a mystery capsule out of the top when you hit it.
 
 ## 2. Why / constraints
 * Deadline (Dec 13), Bambu A1 + AMS, comfortable with Arduino, not with CAD.
@@ -17,11 +17,15 @@ Working outline. Photo names refer to `images/photos/`.
   wallop throws candy across the room.
 * The pivot to v2: the hit becomes a *signal*. A motor slowly winds a spring via
   a snail cam, and the cam's cliff releases it. Same energy every time, no latch.
-* Launcher renders (`launcher_cocked.png`, `launcher_fired.png`) and the
-  section (`section.png`, `section_hit.png`). Slow-mo of the lever snapping.
+* The pivot to v3: a launched capsule has to be *caught*. Small kids don't
+  catch, and a missed capsule falls back in or rolls under the sofa. So: an
+  elevator. Belt-driven car, capsule rises out of the lid and waits.
+* Why a belt (no room for a rack under the car, a lead screw is slow).
+* Lift renders (`lift_down.png`, `lift_up.png`) and the section
+  (`section.png`, `section_up.png`).
 
 ## 4. One capsule at a time, no extra parts
-* Funnel floor, one-ball chamber, the piston side blocks the next ball while it's up.
+* Funnel floor, one-ball car, the 70 mm tall car closes the window while it's up (no gate).
 * Why round capsules.
 
 ## 5. CAD as code
@@ -34,8 +38,8 @@ Working outline. Photo names refer to `images/photos/`.
 
 ## 7. Electronics: making it *feel* right
 * Hall sensor + magnet, coin chime, LED burst. Wiring diagram.
-* Waiting *cocked* so the launch is instant; a second Hall sensor + a magnet
-  in the cam tells the Nano where the cam is. Jam detection with a timeout.
+* Two more Hall sensors + one magnet in the belt clamp = end stops with no
+  switches. Jam detection with a timeout; it re-homes on the next hit.
 * Original 8-bit sounds generated in Python.
 
 ## 8. Assembly + first hit
@@ -43,7 +47,7 @@ Working outline. Photo names refer to `images/photos/`.
 * What went wrong (be honest, readers love this).
 
 ## 9. Results + what's next
-* Capacity, how far it shoots, how many hits before a refill.
+* Capacity, cycle time, how many hits before a refill.
 * v2 ideas: hatch flap, empty-detector, battery version, bigger 50 mm capsules.
 
 ## 10. Build your own

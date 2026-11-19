@@ -54,7 +54,7 @@ def resistor(x, y, label, color):
 NX, NY, NW, NH = 430, 170, 220, 340
 box(NX, NY, NW, NH, "Arduino Nano", "ATmega328P, 5 V")
 nano = {
-    "5V": (NX, NY + 90), "GND": (NX, NY + 140), "A0": (NX, NY + 240), "A1": (NX, NY + 280),
+    "5V": (NX, NY + 90), "GND": (NX, NY + 140), "A0": (NX, NY + 220), "A1": (NX, NY + 270), "A2": (NX, NY + 310),
     "D5": (NX + NW, NY + 280), "D9": (NX + NW, NY + 320),
     "D6": (NX + NW, NY + 90), "D4": (NX + NW, NY + 140),
     "D10": (NX + NW, NY + 190), "D11": (NX + NW, NY + 240),
@@ -89,10 +89,15 @@ ring = {"5V": (LX, LY + 80), "GND": (LX, LY + 105), "DIN": (LX, LY + 130)}
 for k, p in ring.items():
     pin(*p, k, "in-left")
 
-CX, CY = 40, 580
-box(CX, CY, 190, 150, "SS49E Hall (cam)", "on the post next to the cam,\nsees the cam magnet", "#eef3fb")
-camh = {"VCC": (CX + 190, CY + 84), "GND": (CX + 190, CY + 108), "OUT": (CX + 190, CY + 132)}
+CX, CY = 40, 570
+box(CX, CY, 190, 120, "SS49E (lift bottom)", "lower seat on the belt housing", "#eef3fb")
+camh = {"VCC": (CX + 190, CY + 60), "GND": (CX + 190, CY + 84), "OUT": (CX + 190, CY + 108)}
 for k, p in camh.items():
+    pin(*p, k, "in-right")
+TX_, TY_ = 40, 710
+box(TX_, TY_, 190, 120, "SS49E (lift top)", "upper seat on the belt housing", "#eef3fb")
+toph = {"VCC": (TX_ + 190, TY_ + 60), "GND": (TX_ + 190, TY_ + 84), "OUT": (TX_ + 190, TY_ + 108)}
+for k, p in toph.items():
     pin(*p, k, "in-right")
 
 MX, MY = 720, 620
@@ -150,15 +155,19 @@ wire([(RAILG, usb["GND"][1]), (RAILG, TOPG), (780, TOPG), (780, ring["GND"][1]),
 wire([(760, ring["5V"][1]), (760, df["VCC"][1]), df["VCC"]], RED)
 wire([(780, ring["GND"][1]), (780, df["GND"][1]), df["GND"]], BLK)
 
-# lower rails: cam sensor + motor driver
+# lower rails: lift sensors + motor driver
 wire([(RAIL5, hall["VCC"][1]), (RAIL5, camh["VCC"][1]), camh["VCC"]], RED)
 wire([(RAILG, hall["GND"][1]), (RAILG, camh["GND"][1]), camh["GND"]], BLK)
+wire([(RAIL5, camh["VCC"][1]), (RAIL5, toph["VCC"][1]), toph["VCC"]], RED)
+wire([(RAILG, camh["GND"][1]), (RAILG, toph["GND"][1]), toph["GND"]], BLK)
 wire([(RAIL5, camh["VCC"][1]), (RAIL5, 830), (700, 830), (700, drv["VCC"][1]), drv["VCC"]], RED, "+5 V → VM", at=1)
 wire([(RAILG, camh["GND"][1]), (RAILG, 850), (708, 850), (708, drv["GND"][1]), drv["GND"]], BLK)
 for x, y, c in ((RAIL5, hall["VCC"][1], RED), (RAILG, hall["GND"][1], BLK),
-                (RAIL5, camh["VCC"][1], RED), (RAILG, camh["GND"][1], BLK)):
+                (RAIL5, camh["VCC"][1], RED), (RAILG, camh["GND"][1], BLK),
+                (RAIL5, toph["VCC"][1], RED), (RAILG, toph["GND"][1], BLK)):
     svg.append(f'<circle cx="{x}" cy="{y}" r="5" fill="{c}"/>')
 wire([camh["OUT"], (310, camh["OUT"][1]), (310, nano["A1"][1]), nano["A1"]], GRN)
+wire([toph["OUT"], (318, toph["OUT"][1]), (318, nano["A2"][1]), nano["A2"]], GRN)
 wire([nano["D5"], (665, nano["D5"][1]), (665, drv["IN1"][1]), drv["IN1"]], PUR)
 wire([nano["D9"], (655, nano["D9"][1]), (655, drv["IN2"][1]), drv["IN2"]], PUR)
 
@@ -177,8 +186,8 @@ wire([(782, df["RX"][1]), df["RX"]], BLU)
 svg.append(f'<text x="40" y="{H - 32}" font-size="13" fill="#556">Red = +5 V, black = GND. '
            'Keep LED + DFPlayer power wires short and thick-ish (22-24 AWG). '
            'SS49E pins left→right (flat face toward you): VCC, GND, OUT.</text>')
-svg.append(f'<text x="40" y="{H - 12}" font-size="13" fill="#556">If the cam turns the wrong way '
-           '(it stalls against the drop and the LEDs blink red), swap the two motor wires or set MOTOR_REVERSE 1.</text>')
+svg.append(f'<text x="40" y="{H - 12}" font-size="13" fill="#556">At power-up the car must drive DOWN. '
+           'If it goes up (and the LEDs blink red), swap the two motor wires or set MOTOR_REVERSE 1.</text>')
 svg.append(f'<text x="40" y="34" font-size="22" font-weight="bold" fill="#223">Mystery Block wiring</text>')
 svg.append("</svg>")
 OUT.parent.mkdir(parents=True, exist_ok=True)

@@ -27,9 +27,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Hit detector + launcher unit tests (host)
+      - name: Hit detector + lift unit tests (host)
         run: |
-          for t in hit_detector launcher; do
+          for t in hit_detector lift; do
             g++ -std=c++11 -Wall -Wextra -Werror -Ifirmware/mystery_block \
               firmware/test/test_$t.cpp -o /tmp/test_$t
             /tmp/test_$t

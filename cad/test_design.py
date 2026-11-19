@@ -2,18 +2,18 @@
 
 These are the "does it actually fit together and work" tests: printer bed,
 stack-up arithmetic, part-to-part interference at rest and at full stroke,
-the ball's path in and out of the launch tube, and hopper capacity.
+the capsule's path into the lift and up out of the lid, and hopper capacity.
 """
 import itertools
 import sys
-from math import cos, pi, radians, sin, sqrt
+from math import cos, pi, radians, sqrt
 from pathlib import Path
 
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from build123d import Box, Cylinder, Pos, Sphere  # noqa: E402
+from build123d import Box, Pos, Sphere  # noqa: E402
 
 import model as m  # noqa: E402
 from params import *  # noqa: E402,F403
@@ -56,8 +56,6 @@ def test_every_part_is_a_valid_solid(parts):
 def test_stack_up():
     # hit panel: bosses (plus O-ring) reach the deck exactly at STROKE
     assert DECK_BOT - (BOSS_TOP + PAD) == pytest.approx(STROKE)
-    # piston: lever lifts it LIFT, then it coasts COAST into the tower lip pad
-    assert LIP_BOT - (SEAT_Z + FLANGE_T + PAD) == pytest.approx(LIFT + COAST)
     # guide screw: button head (2.2 mm) + washer must stay inside the panel
     head_bottom = WASHER_TOP - WASHER_T - 2.2
     assert head_bottom > PANEL_BOT, "screw head would stick out of the bottom"
@@ -65,112 +63,99 @@ def test_stack_up():
     # rivet screws land in the middle of the deck edge / in the column legs
     assert DECK_BOT + 2.5 < RIVET_Z[0] < DECK_TOP - 2.5
     assert HALF - COL_LEG + 3 < RIVET_U < HALF - 3
-    # after firing the piston drops back onto the lever just below the sill,
-    # so the next ball rolls straight in
-    assert 0.5 <= WIN_BOT - PISTON_TOP_UP <= 2.5
-    # launcher fits in the electronics bay
-    assert m.lever_top_z(TIP_X, m.THETA_COCKED) - LEVER_T > DECK_TOP + 1
-    assert m.CAM_Z + m.CAM_R1 < SLAB_BOT - 1
-    assert TUBE_BOT + 4 < SLAB_BOT
+    # lift: car top below the window sill when down, so the next capsule
+    # rolls straight in; at the top the dish is flush with the lid
+    assert 2.0 <= WIN_BOT - CAR_TOP_DOWN <= 6.0
+    assert CAR_TOP_UP == pytest.approx(S)
+    # the hit panel at full stroke stays under the car
+    assert CAR_BOT_DOWN > PANEL_TOP + STROKE + 1
+    # idler and housing stay under the lid
+    assert IDLER_Z + IDLER_FLANGE_R < LID_IN
 
 
-@pytest.mark.parametrize("state", ["cocked", "fired"])
-def test_nothing_collides(state):
-    parts = m.assembly(state=state)
+def test_window_stays_shut_while_the_car_is_away():
+    """No gate needed: once the car leaves, its side wall covers the window,
+    so the next capsule waits in the hopper. The gap under the car at the
+    top can't let a capsule in."""
+    car_bot_up = CAR_BOT_DOWN + LIFT_TRAVEL
+    assert car_bot_up - WIN_BOT < PAYLOAD_D / 8
+    win_top = WIN_BOT + WIN_W + WIN_W / 2  # peaked roof
+    # the car is a solid wall over the window from bottom to top of travel
+    assert CAR_H > WIN_W + WIN_W / 2 + (car_bot_up - WIN_BOT)
+    assert CAR_TOP_UP > win_top
+
+
+def test_capsule_is_presented_above_the_lid():
+    z = m.chamber_ball_z(LIFT_TRAVEL)
+    assert z - S > PAYLOAD_D * 0.35  # more than 85% of the capsule is out
+    lid = m.place_lid(m.make_lid())
+    assert overlap(_ball(0, 0, z), lid) < TOL
+
+
+STATIC_SKIP = {("car", "belt"), ("belt", "car"), ("ball_chamber", "car"), ("car", "ball_chamber")}
+
+
+@pytest.mark.parametrize("lift", [0.0, LIFT_TRAVEL])
+def test_nothing_collides(lift):
+    parts = m.assembly(lift=lift)
     bad = []
     for (n1, s1, *_), (n2, s2, *_) in itertools.combinations(parts, 2):
+        if (n1, n2) in STATIC_SKIP:
+            continue
         v = overlap(s1, s2)
         if v > TOL:
             bad.append((n1, n2, round(v, 2)))
     assert not bad, bad
 
 
-@pytest.mark.parametrize("dz", [2, 10, 25, 45, 60])
-def test_tower_drops_over_piston_and_lever(dz):
-    """Assembly order: lever + piston go in first, then the tower is lowered
-    straight down over them. Nothing may block that path."""
-    asm = {n: s for n, s, *_ in m.assembly(state="cocked", with_balls=False)}
-    tower = Pos(0, 0, dz) * asm["tower"]
-    for n in ("piston", "lever", "chassis", "cam", "motor"):
-        assert overlap(tower, asm[n]) < 1e-3, n
+def test_car_travel_is_free():
+    """Car (with its capsule) at many heights against every fixed part."""
+    fixed = [(n, s) for n, s, *_ in m.assembly(with_balls=False)
+             if n not in ("car", "belt", "hit_panel")]
+    car = m.make_car()
+    steps = 9
+    for i in range(steps + 1):
+        lift = LIFT_TRAVEL * i / steps
+        c = m.place_car(lift, car)
+        b = _ball(0, 0, m.chamber_ball_z(lift))
+        for n, s in fixed:
+            assert overlap(c, s) < TOL, (round(lift, 1), "car", n)
+            assert overlap(b, s) < TOL, (round(lift, 1), "capsule", n)
 
 
-def test_tower_nuts_clear_the_hit_panel():
-    """Tower screw tips + nyloc nuts hang under the deck; the panel must miss them."""
-    panel = Pos(0, 0, STROKE) * m.make_hit_panel()
-    for x, y in m.tower_boss_points():
-        nut = Pos(x, y, DECK_BOT - 3) * Cylinder(3.5, 6)
-        assert overlap(panel, nut) < 1e-3, (x, y)
+@pytest.mark.parametrize("dz", [5, 30, 60, 100])
+def test_assembly_order(dz):
+    """The car goes in first (it rests in the deck), then the belt housing and
+    the tube are lowered straight down over it. Nothing may block that path."""
+    asm = {n: s for n, s, *_ in m.assembly(with_balls=False)}
+    housing = Pos(0, 0, dz) * asm["housing"]
+    for n in ("car", "chassis", "motor", "pulleys"):
+        assert overlap(housing, asm[n]) < TOL, ("housing", n)
+    tube = Pos(0, 0, dz) * asm["tube"]
+    for n in ("car", "chassis", "housing"):
+        assert overlap(tube, asm[n]) < TOL, ("tube", n)
+
+
+def test_belt_clamp_clears_pulley_and_idler():
+    pulleys, _ = m.belt_dummy()
+    car = m.make_car()
+    for lift in (0.0, LIFT_TRAVEL):
+        assert overlap(m.place_car(lift, car), pulleys) < TOL, lift
+
+
+def test_lift_sensors_line_up_with_the_magnet():
+    (bx, by, bz), (tx, ty, tz) = m.lift_sensor_points()
+    assert bz == pytest.approx(ARM_MIN) and tz == pytest.approx(ARM_MAX)
+    assert tz - bz == pytest.approx(LIFT_TRAVEL)
+    assert bx - 5.5 < 6.0  # magnet face to sensor face, SS49E range
 
 
 def test_hit_panel_full_stroke_is_free():
-    up = m.assembly(state="cocked", panel_lift=STROKE, with_balls=False)
+    up = m.assembly(panel_lift=STROKE, with_balls=False)
     panel = [s for n, s, *_ in up if n == "hit_panel"][0]
     bad = [(n, round(overlap(panel, s), 2)) for n, s, *_ in up
            if n != "hit_panel" and overlap(panel, s) > TOL]
     assert not bad, bad
-
-
-def test_piston_coast_is_free():
-    """After the lever stops, the piston can coast COAST more."""
-    tower = m.make_tower()
-    piston = Pos(0, 0, LIFT + COAST - 0.05) * m.make_piston()
-    assert overlap(tower, piston) < TOL
-    assert overlap(m.make_tube(), piston) < TOL
-
-
-def _lever_angle_for_cam(beta):
-    return m.lever_angle_for_cam(beta)
-
-
-def test_cam_cocks_dwells_and_releases():
-    from math import degrees
-    th = {b: _lever_angle_for_cam(b) for b in range(-270, 91, 5)}
-    # parked: fully cocked
-    assert degrees(_lever_angle_for_cam(m.BETA_COCKED)) == pytest.approx(
-        degrees(m.THETA_COCKED), abs=0.3)
-    # dwell: stays cocked across the whole dwell (motor coast margin)
-    dwell0 = CAM_RISE - 270 + 3
-    dwell1 = CAM_RISE + CAM_DWELL - 270 - 4
-    for b in range(int(dwell0), int(dwell1) + 1):
-        assert degrees(_lever_angle_for_cam(b)) == pytest.approx(
-            degrees(m.THETA_COCKED), abs=0.5), b
-    # after the drop the lever is free (cam not touching)
-    assert _lever_angle_for_cam(m.BETA_FIRED) == pytest.approx(m.THETA_UP)
-    # the release is a snap: from fully cocked to fully up within 6 deg of cam
-    # turn (about 20 ms at 50 RPM), so the spring, not the cam, sets the speed
-    from math import degrees as _d
-    cocked = [b / 2 for b in range(int(dwell1 * 2), 120)
-              if _lever_angle_for_cam(b / 2) < m.THETA_COCKED + radians(0.5)]
-    up = [b / 2 for b in range(int(dwell1 * 2), 120)
-          if _lever_angle_for_cam(b / 2) >= m.THETA_UP - 1e-6]
-    assert up and up[0] - max(cocked) <= 6.0, (max(cocked), up[0])
-    # during the rise the lever only ever goes down (smooth cocking)
-    seq = [th[b] for b in sorted(th) if b <= dwell0]
-    assert all(b <= a + 1e-4 for a, b in zip(seq, seq[1:]))
-
-
-def test_cam_turns_freely():
-    """Full revolution: the cam never hits the chassis, tower or hopper."""
-    fixed = [m.make_chassis(), m.make_tower(), m.make_hopper(), m.motor_dummy()]
-    cam = m.make_cam()
-    for beta in range(0, 360, 15):
-        c = m.place_cam(beta, cam)
-        for f in fixed:
-            assert overlap(c, f) < TOL, beta
-
-
-def test_cam_parks_inside_the_dwell():
-    """The motor stops when the cam magnet reaches its sensor. That must be
-    inside the dwell (fully cocked) with margin for motor coast before the
-    drop, and the sensor must sit right where the magnet passes."""
-    dwell0, drop = CAM_RISE - 270.0, m.CAM_DROP - 270.0
-    assert dwell0 + 10 <= m.BETA_COCKED <= drop - 25
-    assert dwell0 + 25 <= m.MAG_TOP_BETA <= drop - 8
-    a = radians(m.CAM_MAG_ANGLE - m.MAG_TOP_BETA)
-    mx, mz = CAM_X + CAM_MAG_R * cos(a), m.CAM_Z + CAM_MAG_R * sin(a)
-    sx, _, sz = m.CAM_SENSOR
-    assert sqrt((mx - sx) ** 2 + (mz - sz) ** 2) < 0.5
 
 
 def _ball(x, y, z):
@@ -178,32 +163,36 @@ def _ball(x, y, z):
 
 
 def test_ball_rolls_in_through_the_window():
-    """Ball travels from the hopper floor at the port into the chamber."""
-    tube, hopper = m.make_tube(), m.make_hopper()
+    """Capsule rolls from the hopper floor over the sill into the car dish.
+    For each step toward the tube axis find the lowest height where it fits
+    (where it would rest): that must only ever go down, and end in the dish."""
+    solids = [m.make_tube(), m.make_hopper(), m.place_car(0.0)]
     r = PAYLOAD_D / 2
-    # a ball resting on a slope sits r/cos(slope) above the floor point below it
-    z_out = m.floor_height(0, R_OUT + r) + r / cos(radians(FLOOR_SLOPE)) + 0.2
-    z_in = m.chamber_ball_z("fired") + 0.3
-    steps = 8
-    for i in range(steps + 1):
-        f = i / steps
-        y = (R_OUT + r) * (1 - f)
-        z = z_out + (z_in - z_out) * f
-        b = _ball(0, y, max(z, z_in))
-        assert overlap(b, tube) < TOL, f"ball hits tube at y={y:.1f}"
-        assert overlap(b, hopper) < 2.0, f"ball hits hopper at y={y:.1f}"
+    z_dish = m.chamber_ball_z(0)
 
+    def fits(y, z):
+        b = _ball(0, y, z)
+        return all(overlap(b, s) < TOL for s in solids)
 
-def test_ball_flies_out_of_the_hatch():
-    tube, lid = m.make_tube(), m.place_lid(m.make_lid())
-    collar = Pos(0, 0, LED_COLLAR_Z) * m.make_led_collar()
-    z0 = m.chamber_ball_z("fired") + 1
-    z = z0
-    while z < S + PAYLOAD_D:
-        b = _ball(0, 0, z)
-        for name, s in (("tube", tube), ("lid", lid), ("collar", collar)):
-            assert overlap(b, s) < TOL, f"ball hits {name} at z={z:.0f}"
-        z += 6
+    def rest_z(y, hi):
+        lo = z_dish - 0.5
+        if fits(y, lo):
+            return lo
+        assert fits(y, hi), y
+        for _ in range(10):
+            mid = (lo + hi) / 2
+            lo, hi = (lo, mid) if fits(y, mid) else (mid, hi)
+        return hi
+
+    y0 = R_OUT + r + 2
+    z = m.floor_height(0, y0) + r / cos(radians(FLOOR_SLOPE)) + 1.0
+    prev = z
+    for i in range(9):
+        y = y0 * (1 - i / 8)
+        z = rest_z(y, prev + 0.2)
+        assert z <= prev + 0.2, f"capsule would have to climb at y={y:.1f}"
+        prev = z
+    assert prev <= z_dish + 0.2
 
 
 def test_hopper_holds_enough_capsules():
@@ -211,7 +200,7 @@ def test_hopper_holds_enough_capsules():
     tube = m.make_tube()
     fill_to = LED_COLLAR_Z - 2
     space = Pos(0, 0, (SLAB_BOT + fill_to) / 2) * Box(INNER, INNER, fill_to - SLAB_BOT)
-    free = space - hopper - Pos(0, 0, 0) * tube
+    free = space - hopper - tube - m.make_housing()
     free_v = free.volume
     ball_v = 4 / 3 * pi * (PAYLOAD_D / 2) ** 3
     capsules = int(free_v * 0.5 / ball_v)  # ~0.5 packing incl. wall effects

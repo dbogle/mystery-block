@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // Mystery Block - sound + light firmware
 //
-// A hit on the bottom panel (Hall sensor + magnet) fires the launcher: the
-// N20 motor turns the snail cam past its drop-off so the spring lever kicks
-// the piston, then re-cocks and parks on the cam magnet. Plus chime + LEDs.
-// Bench test: send 'f' in the Serial Monitor (115200) to fire.
+// A hit on the bottom panel (Hall sensor + magnet) starts the lift: the N20
+// motor drives a GT2 belt that raises the car until the capsule sits on top
+// of the lid, holds it there for the kid to take, then lowers the car so the
+// next capsule rolls in. Plus chime + LEDs.
+// Bench test: send 'f' in the Serial Monitor (115200) to fake a hit.
 //
 // Board: Arduino Nano (ATmega328P). Libraries (Library Manager):
 //   - DFRobotDFPlayerMini
@@ -17,14 +18,15 @@
 
 #include "config.h"
 #include "hit_detector.h"
-#include "launcher.h"
+#include "lift.h"
 
 Adafruit_NeoPixel leds(LED_COUNT, PIN_LEDS, NEO_GRB + NEO_KHZ800);
 SoftwareSerial dfSerial(PIN_DF_RX, PIN_DF_TX);
 DFRobotDFPlayerMini player;
 HitDetector detector(HIT_THRESHOLD, HIT_RELEASE, HIT_REFRACTORY);
-Launcher launcher(LAUNCH_TIMEOUT);
-MagnetSensor camSensor(512, CAM_ON_DELTA, CAM_OFF_DELTA);
+Lift lift(LIFT_TIMEOUT, LIFT_HOLD_MS);
+MagnetSensor bottomSensor(512, LIFT_ON_DELTA, LIFT_OFF_DELTA);
+MagnetSensor topSensor(512, LIFT_ON_DELTA, LIFT_OFF_DELTA);
 
 enum Mode : uint8_t { IDLE, BURST, BONUS, SLEEP, FAULTED };
 Mode mode = IDLE;
@@ -54,19 +56,21 @@ static void playSound(uint8_t track) {
 #endif
 }
 
-static void motor(bool on) {
-  if (!on) {  // brake: both inputs high stops the cam quickly
+// dir: +1 up, -1 down, 0 brake (both inputs high holds the car in place).
+static void motor(int8_t dir) {
+  if (dir == 0) {
     digitalWrite(PIN_MOTOR_A, HIGH);
     digitalWrite(PIN_MOTOR_B, HIGH);
     return;
   }
-#if MOTOR_REVERSE
-  digitalWrite(PIN_MOTOR_A, LOW);
-  analogWrite(PIN_MOTOR_B, MOTOR_SPEED);
-#else
-  analogWrite(PIN_MOTOR_A, MOTOR_SPEED);
-  digitalWrite(PIN_MOTOR_B, LOW);
-#endif
+  if (MOTOR_REVERSE) dir = -dir;
+  if (dir > 0) {
+    analogWrite(PIN_MOTOR_A, MOTOR_SPEED);
+    digitalWrite(PIN_MOTOR_B, LOW);
+  } else {
+    digitalWrite(PIN_MOTOR_A, LOW);
+    analogWrite(PIN_MOTOR_B, MOTOR_SPEED_DOWN);
+  }
 }
 
 static void setMode(Mode m, uint32_t now) {
@@ -123,7 +127,7 @@ void setup() {
   pinMode(PIN_DF_BUSY, INPUT_PULLUP);
   pinMode(PIN_MOTOR_A, OUTPUT);
   pinMode(PIN_MOTOR_B, OUTPUT);
-  motor(false);
+  motor(0);
 
   leds.begin();
   leds.setBrightness(LED_BRIGHTNESS);
@@ -153,7 +157,7 @@ void setup() {
   randomSeed(analogRead(A7));
   lastHitMs = millis();
   setMode(IDLE, millis());
-  launcher.begin(millis());  // finds the parked (cocked) position
+  lift.begin(millis());  // drives the car down to its loading position
 }
 
 void loop() {
@@ -164,7 +168,7 @@ void loop() {
 
   if (fireNow) {
     lastHitMs = now;
-    if (launcher.fire(now)) {
+    if (lift.raise(now)) {
       hitCount++;
       bool bonus = BONUS_EVERY > 0 && hitCount % BONUS_EVERY == 0;
       playSound(bonus ? SND_BONUS : SND_COIN);
@@ -174,18 +178,19 @@ void loop() {
     }
   }
 
-  bool magnet = camSensor.update(analogRead(PIN_CAM_HALL));
-  Launcher::State before = launcher.state();
-  motor(launcher.update(magnet, now));
-  if (launcher.state() == Launcher::FAULT && before != Launcher::FAULT) {
-    Serial.println(F("LAUNCHER FAULT: cam never reached its sensor. Jammed? "
-                     "Motor backwards (MOTOR_REVERSE)? Cam sensor wired?"));
+  bool atBottom = bottomSensor.update(analogRead(PIN_LIFT_BOTTOM));
+  bool atTop = topSensor.update(analogRead(PIN_LIFT_TOP));
+  Lift::State before = lift.state();
+  motor(lift.update(atBottom, atTop, now));
+  if (lift.state() == Lift::FAULT && before != Lift::FAULT) {
+    Serial.println(F("LIFT FAULT: car never reached its sensor. Jammed? "
+                     "Motor backwards (MOTOR_REVERSE)? Sensor wired?"));
     setMode(FAULTED, now);
-  } else if (mode == FAULTED && launcher.state() != Launcher::FAULT) {
+  } else if (mode == FAULTED && lift.state() != Lift::FAULT) {
     setMode(IDLE, now);
   }
 
-#if DEBUG_HALL || DEBUG_CAM
+#if DEBUG_HALL || DEBUG_LIFT
   static uint32_t lastDbg = 0;
   if (now - lastDbg >= 50) {
     lastDbg = now;
@@ -196,12 +201,15 @@ void loop() {
     Serial.print(detector.baseline());
     Serial.print(' ');
 #endif
-#if DEBUG_CAM
-    Serial.print(F("cam raw="));
-    Serial.print(analogRead(PIN_CAM_HALL));
-    Serial.print(magnet ? F(" MAGNET") : F(" -"));
+#if DEBUG_LIFT
+    Serial.print(F("bottom raw="));
+    Serial.print(analogRead(PIN_LIFT_BOTTOM));
+    Serial.print(atBottom ? F(" MAGNET") : F(" -"));
+    Serial.print(F(" top raw="));
+    Serial.print(analogRead(PIN_LIFT_TOP));
+    Serial.print(atTop ? F(" MAGNET") : F(" -"));
     Serial.print(F(" state="));
-    Serial.print(launcher.state());
+    Serial.print(lift.state());
 #endif
     Serial.println();
   }

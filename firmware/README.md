@@ -1,7 +1,7 @@
 # Firmware
 
 Arduino sketch for an **Arduino Nano** (ATmega328P). It senses the hit, runs
-the launcher motor, and plays the sound and light show.
+the lift motor, and plays the sound and light show.
 
 ## Build & flash
 
@@ -24,33 +24,35 @@ arduino-cli upload  --fqbn arduino:avr:nano:cpu=atmega328old -p /dev/ttyUSB0 fir
 | Event | Sound | LEDs |
 |---|---|---|
 | Power on | start-up chime (`003.wav`) | gold shimmer |
-| Hit | coin chime (`001.wav`) + launch | white flash, gold sparkle fade |
+| Hit | coin chime (`001.wav`) + lift | white flash, gold sparkle fade |
 | Every 10th hit | bonus fanfare (`002.wav`) | rainbow spin |
 | 10 min with no hit | | LEDs off until the next hit |
-| Launcher jammed | | blinking red (next hit retries) |
+| Lift jammed | | blinking red (next hit retries) |
 
-## Launcher
+## Lift
 
-The block idles **cocked**: the cam holds the lever down against the spring and
-its magnet sits in front of the cam Hall sensor (A1). A hit (or `f` in the
-Serial Monitor) runs the motor; the cam drops the lever (launch), keeps turning,
-re-cocks and stops when the magnet comes back round. That's one revolution,
-about 1.2 s with a 50 RPM motor, and hits during that time are ignored.
+The car idles **down** (loading position): the magnet in its belt clamp sits in
+front of the bottom Hall sensor (A1). A hit (or `f` in the Serial Monitor)
+drives the motor up until the magnet reaches the top sensor (A2). The capsule
+is now on top of the lid. The car holds there for `LIFT_HOLD_MS` (8 s), then
+drives down until the bottom sensor sees the magnet again, and the next capsule
+rolls in. Hits while it is moving or holding are ignored.
 
-At power-on the motor turns until it finds the magnet (this may fire once if
-the cam stopped mid-way, so keep the hatch clear).
+At power-on the car always drives down to the bottom sensor first.
 
-If a step takes longer than `LAUNCH_TIMEOUT` (3 s) the motor stops and the LEDs
-blink red. The usual causes:
+If a move takes longer than `LIFT_TIMEOUT` (5 s) the motor stops and the LEDs
+blink red. The next hit re-homes it. The usual causes:
 
 | Symptom | Fix |
 |---|---|
-| Motor hums, cam pushes against the drop face | Motor turns backwards: set `MOTOR_REVERSE 1` or swap the two motor wires |
-| Cam turns but never stops | Cam sensor not seeing the magnet: check A1 wiring, magnet polarity, or tune with `DEBUG_CAM 1` |
+| Car goes up at power-on, then red | Motor turns backwards: set `MOTOR_REVERSE 1` or swap the two motor wires |
+| Car reaches the end but the motor keeps running | Sensor not seeing the magnet: check A1/A2 wiring, or tune with `DEBUG_LIFT 1` |
+| Something held the car (a hand on the capsule) | Nothing to fix: the next hit retries |
 | Motor doesn't move | Driver power / wiring (VM to 5 V, IN1 to D5, IN2 to D9) |
 
-To tune the cam sensor, set `DEBUG_CAM 1`, turn the cam slowly by hand and
-watch the readings; `CAM_ON_DELTA` should be about half the peak deviation.
+To tune the lift sensors, set `DEBUG_LIFT 1`, move the car slowly by hand
+(turn the pulley) and watch the readings; `LIFT_ON_DELTA` should be about half
+the peak deviation.
 
 ## Tuning the hit sensor
 
@@ -60,12 +62,12 @@ watch the readings; `CAM_ON_DELTA` should be about half the peak deviation.
 4. Set `HIT_THRESHOLD` to about that deviation and `HIT_RELEASE` to ~40 % of it.
 
 All settings live in [`config.h`](mystery_block/config.h). The hit detector
-([`hit_detector.h`](mystery_block/hit_detector.h)) and the launcher state machine
-([`launcher.h`](mystery_block/launcher.h)) are plain C++ with host-side unit tests:
+([`hit_detector.h`](mystery_block/hit_detector.h)) and the lift state machine
+([`lift.h`](mystery_block/lift.h)) are plain C++ with host-side unit tests:
 
 ```bash
 g++ -std=c++11 -Imystery_block test/test_hit_detector.cpp -o /tmp/t && /tmp/t
-g++ -std=c++11 -Imystery_block test/test_launcher.cpp -o /tmp/l && /tmp/l
+g++ -std=c++11 -Imystery_block test/test_lift.cpp -o /tmp/l && /tmp/l
 ```
 
 ## Sounds

@@ -58,48 +58,44 @@ RIDGE_H = 10.0        # diverter ridge behind the tube (front side, -Y)
 RIDGE_W = 30.0        # half width of ridge base
 WIN_W = PAYLOAD_D + 2.0  # side window ("port") where balls enter the tube
 WIN_BOT = Z_C - 1.5      # window sill
-PISTON_CLEAR = 0.5       # radial clearance piston <-> tube
 
-# --- Motorised launcher -----------------------------------------------------
-# A gear motor turns a snail cam that pushes a lever down against a spring.
-# At the cam's drop-off the spring snaps the lever up; its tip strikes the
-# piston from below, the piston stops on the tower lip and the ball flies.
-# Idle state is COCKED (cam parked on its dwell), so a hit fires in ~0.1 s.
-FLANGE_T = 3.0
-FLANGE_D = 46.0
-LIFT = 3.0                 # lever pushes the piston this far before stopping
-COAST = 4.0                # piston coasts this far more, then hits the lip
-PISTON_TOP_UP = WIN_BOT - 1.0              # piston top right after firing
-SEAT_Z = PISTON_TOP_UP - LIFT - 25.5       # flange underside when seated (59)
-PISTON_TOP_SEATED = PISTON_TOP_UP - LIFT   # piston top while cocked
-LIP_BOT = SEAT_Z + FLANGE_T + LIFT + COAST + PAD   # piston up-stop (71)
-LIP_T = 4.0
-TUBE_BOT = LIP_BOT + LIP_T                 # tube stands on the tower lip (75)
+# --- Lift -------------------------------------------------------------------
+# The capsule rides up the tube on a tall "car". A GT2 belt loop (N20 motor
+# pulley at the bottom, idler at the top) moves the car through an arm that
+# sticks out of a slot in the front (-Y) of the tube. The car is tall enough
+# that its side keeps the hopper window shut at every height, so exactly one
+# capsule is loaded per trip. Up, the capsule sits on top of the lid.
+CAR_CLEAR = 0.5                       # radial clearance car <-> tube bore
+CAR_R = R_IN - CAR_CLEAR
+CAR_TOP_DOWN = WIN_BOT - 4.0          # 84.5: dish rim when down (loading)
+CAR_TOP_UP = S                        # 160: flush with the lid top
+LIFT_TRAVEL = CAR_TOP_UP - CAR_TOP_DOWN   # 75.5
+CAR_H = 70.0
+CAR_BOT_DOWN = CAR_TOP_DOWN - CAR_H   # 14.5: through the deck, above the hit panel
+DISH = 2.5                            # capsule seat depth on the car top
+TUBE_BOT = DECK_TOP                   # the tube stands on the deck
 
-TOWER_RI = FLANGE_D / 2 + 1.5   # 24.5
-TOWER_RO = TOWER_RI + 4.0       # 28.5
-TOWER_BOSS_R = 30.0             # M3 bosses, on the deck's 10 mm grid
-SLOT_W = 14.0                   # lever slot in the tower (-X side)
+PULLEY_PD = 12.73       # GT2 20 tooth pitch diameter
+PULLEY_FLANGE_R = 8.0
+IDLER_FLANGE_R = 9.0
+BELT_W, BELT_T = 6.0, 1.4
+STRAND_Y = -39.5        # inner belt strand (the arm clamps it), outside the LED ring
+BELT_Y = STRAND_Y - PULLEY_PD / 2     # pulley + idler axes (along X)
+CLAMP_H = 8.0           # belt clamp on the end of the car arm
+MOTOR_Z = DECK_TOP + 2.5              # motor shaft; motor + pulley sit in a deck pocket
+ARM_MIN = MOTOR_Z + PULLEY_FLANGE_R + CLAMP_H / 2 + 1.0   # arm centre, car down
+ARM_DZ = ARM_MIN - CAR_BOT_DOWN       # arm height above the car bottom
+ARM_MAX = ARM_MIN + LIFT_TRAVEL       # arm centre, car up
+IDLER_Z = ARM_MAX + CLAMP_H / 2 + IDLER_FLANGE_R + 1.0
+ARM_W = 6.0             # arm width (X); the tube slot is ARM_W + 1.2
+HOUSING_HX = 9.5        # belt housing half width (X)
+HOUSING_Y0 = BELT_Y - IDLER_FLANGE_R - 3.0    # outer face of the housing (-Y)
+HOUSING_UPPER_Y = -36.2  # above the arm's travel the housing steps back to here
+MOTOR_W, MOTOR_H = 12.0, 10.0   # N20 gearbox cross-section (along Y, Z)
+MOTOR_L = 34.0                  # gearbox + motor length (along +X)
+MOTOR_X0 = 10.0                 # gearbox face (the pulley hub is in front of it)
+HOLD_S = 8.0                    # seconds the capsule waits on top
 
-PIV_X, PIV_Z = -66.0, 52.0      # lever pivot (M3 axle, along Y)
-LEVER_T = 8.0                   # lever thickness (Z)
-LEVER_W = 12.0                  # lever width (Y)
-TIP_X = 8.0                     # lever tip end (world X)
-TIP_UP = SEAT_Z + LIFT          # lever tip top when released (62)
-TIP_STROKE = 14.0               # tip travel between released and cocked
-CAM_X = -45.0                   # cam and spring act here
-SPRING_X = CAM_X
-CAM_R0 = 8.0                    # cam minimum radius
-CAM_CLR = 1.0                   # cam <-> lever gap when released
-CAM_W = 8.0                     # cam thickness (Y)
-CAM_RISE, CAM_DWELL = 260.0, 50.0   # degrees; the last 50 deg is the low zone
-CAM_UNDERCUT = 8.0              # drop face leans back so it can't drag
-NOSE_R = 2.5                    # follower nose on the lever under the cam
-LEVER_RELIEF = 3.0              # top of the lever is cut down this much around the nose,
-RELIEF_W = 16.0                 # +/- this far along it, so the cam corner can't drag on it
-CAM_MAG_R = 5.6                 # magnet radius on the cam face
-MOTOR_W, MOTOR_H = 12.0, 10.0   # N20 gearbox cross-section
-MOTOR_L = 34.0                  # gearbox + motor length
 # --- Structure --------------------------------------------------------------
 LID_IN = S - T                 # 154: underside of lid
 COL_TOP = LID_IN - 0.3
