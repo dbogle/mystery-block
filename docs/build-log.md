@@ -7,7 +7,7 @@ time something is printed, changed, broken or learned, with a photo filename.
 
 | # | Date | Decision | Why | Alternatives |
 |---|---|---|---|---|
-| D1 | 2026-11-18 | **Mechanical launch** (panel → piston → ball), electronics only for sound/light | Human hit has 10-100× the energy needed; no actuator to size; still works if electronics slip past the deadline | Solenoid kicker, servo-cocked spring, servo elevator (see [architecture](architecture.md)) |
+| D1 | 2026-11-18 | ~~**Mechanical launch** (panel → piston → ball), electronics only for sound/light~~ Replaced by D13 | Human hit has 10-100× the energy needed; no actuator to size; still works if electronics slip past the deadline | Solenoid kicker, servo-cocked spring, servo elevator (see [architecture](architecture.md)) |
 | D2 | 2026-11-18 | **Round 32 mm payload** (vending capsules / printed capsules) | Round things singulate and never jam; capsules keep the "mystery" and fit candy or figures | Loose candy (jams), custom per-candy feeders |
 | D3 | 2026-11-18 | **160 mm cube** | Fits the A1 bed with margin, room for ~19 capsules, good "block" presence at head height | 200 mm (fewer parts per plate, needs 2 plates per wall) |
 | D4 | 2026-11-18 | **Flat mitred wall panels, face-down printing** | Crisp multicolour "?" with colour changes only in the first 1.2 mm → minimal AMS purge | Printing the shell in one piece (hundreds of colour swaps) |
@@ -19,6 +19,8 @@ time something is printed, changed, broken or learned, with a photo filename.
 | D10 | 2026-11-18 | **build123d (Python) parametric CAD** with fit tests | Reviewable code in git, one-line changes, CI checks that parts still fit | OpenSCAD (not installable in CI here), GUI CAD (not diffable) |
 | D11 | 2026-11-18 | **Original pixel-art "?" and synthesised sounds**, generic name | Safe to open-source; fan-inspired without copying anyone's assets | Ripped sprites/sounds (not ours to publish) |
 | D12 | 2026-11-18 | **MIT licence** | Simple and permissive for code and models | CERN-OHL, CC BY-SA |
+| D13 | 2026-11-19 | **Motorized spring launch**: N20 motor + snail cam cocks a spring lever; hit panel becomes a sensor | With the mechanical launch, pop height depended on how hard a kid hit it (too soft = nothing, too hard = capsule across the room). Spring energy is the same every time. Cam both cocks and releases, so no latch to tune | Keep mechanical (simplest, inconsistent), solenoid (needs 12 V, marginal energy) |
+| D14 | 2026-11-19 | **Idle cocked**, cam parked by a magnet + second SS49E | Hit-to-launch in ~0.1 s instead of a full motor turn; no limit switch to wear | Fire from rest (≈ 1 s delay), microswitch homing |
 
 ## Timeline
 
@@ -26,9 +28,10 @@ time something is printed, changed, broken or learned, with a photo filename.
 |---|---|---|
 | 2026-11-18 | Project kicked off. Architecture chosen, BOM sent for ordering (deadline **Dec 13**) | |
 | 2026-11-18 | v1 CAD, firmware, sounds, docs in the repo. All fit/interference tests pass in CI | `images/renders/*` |
+| 2026-11-19 | v2: switched to a motorized spring launch (D13). New tower, lever and cam; firmware drives the motor | `images/renders/launcher_*.png` |
 | | _Parts ordered_ | |
 | | _First wall panel printed (check "?" colours)_ | `photos/..` |
-| | _Tube + piston test print: piston slides freely?_ | |
+| | _Launcher test print (tower + lever + cam + piston): does the spring pop the piston?_ | |
 | | _Electronics bench test_ | |
 | | _Full assembly_ | |
 | | _First launch_ | |

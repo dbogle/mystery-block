@@ -27,11 +27,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Hit detector unit tests (host)
+      - name: Hit detector + launcher unit tests (host)
         run: |
-          g++ -std=c++11 -Wall -Wextra -Werror -Ifirmware/mystery_block \
-            firmware/test/test_hit_detector.cpp -o /tmp/test_hit
-          /tmp/test_hit
+          for t in hit_detector launcher; do
+            g++ -std=c++11 -Wall -Wextra -Werror -Ifirmware/mystery_block \
+              firmware/test/test_$t.cpp -o /tmp/test_$t
+            /tmp/test_$t
+          done
       - uses: arduino/setup-arduino-cli@v2
       - name: Install core + libraries
         run: |

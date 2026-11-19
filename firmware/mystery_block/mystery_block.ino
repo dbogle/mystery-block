@@ -1,8 +1,10 @@
 // ---------------------------------------------------------------------------
 // Mystery Block - sound + light firmware
 //
-// The candy launch is purely mechanical. This sketch only notices the hit
-// (Hall sensor + magnet on the hit panel) and plays a chime and an LED burst.
+// A hit on the bottom panel (Hall sensor + magnet) fires the launcher: the
+// N20 motor turns the snail cam past its drop-off so the spring lever kicks
+// the piston, then re-cocks and parks on the cam magnet. Plus chime + LEDs.
+// Bench test: send 'f' in the Serial Monitor (115200) to fire.
 //
 // Board: Arduino Nano (ATmega328P). Libraries (Library Manager):
 //   - DFRobotDFPlayerMini
@@ -15,13 +17,16 @@
 
 #include "config.h"
 #include "hit_detector.h"
+#include "launcher.h"
 
 Adafruit_NeoPixel leds(LED_COUNT, PIN_LEDS, NEO_GRB + NEO_KHZ800);
 SoftwareSerial dfSerial(PIN_DF_RX, PIN_DF_TX);
 DFRobotDFPlayerMini player;
 HitDetector detector(HIT_THRESHOLD, HIT_RELEASE, HIT_REFRACTORY);
+Launcher launcher(LAUNCH_TIMEOUT);
+MagnetSensor camSensor(512, CAM_ON_DELTA, CAM_OFF_DELTA);
 
-enum Mode : uint8_t { IDLE, BURST, BONUS, SLEEP };
+enum Mode : uint8_t { IDLE, BURST, BONUS, SLEEP, FAULTED };
 Mode mode = IDLE;
 uint32_t modeStart = 0;
 uint32_t lastHitMs = 0;
@@ -46,6 +51,21 @@ static void playSound(uint8_t track) {
   player.playFolder(SOUND_FOLDER, track);
 #else
   (void)track;
+#endif
+}
+
+static void motor(bool on) {
+  if (!on) {  // brake: both inputs high stops the cam quickly
+    digitalWrite(PIN_MOTOR_A, HIGH);
+    digitalWrite(PIN_MOTOR_B, HIGH);
+    return;
+  }
+#if MOTOR_REVERSE
+  digitalWrite(PIN_MOTOR_A, LOW);
+  analogWrite(PIN_MOTOR_B, MOTOR_SPEED);
+#else
+  analogWrite(PIN_MOTOR_A, MOTOR_SPEED);
+  digitalWrite(PIN_MOTOR_B, LOW);
 #endif
 }
 
@@ -92,10 +112,18 @@ static void frameBonus(uint32_t now) {
   }
 }
 
+static void frameFault(uint32_t now) {
+  bool on = (now / 250) % 2;
+  leds.fill(on ? leds.Color(255, 0, 0) : 0);
+}
+
 // ---- setup / loop ---------------------------------------------------------------
 void setup() {
   Serial.begin(115200);
   pinMode(PIN_DF_BUSY, INPUT_PULLUP);
+  pinMode(PIN_MOTOR_A, OUTPUT);
+  pinMode(PIN_MOTOR_B, OUTPUT);
+  motor(false);
 
   leds.begin();
   leds.setBrightness(LED_BRIGHTNESS);
@@ -125,29 +153,57 @@ void setup() {
   randomSeed(analogRead(A7));
   lastHitMs = millis();
   setMode(IDLE, millis());
+  launcher.begin(millis());  // finds the parked (cocked) position
 }
 
 void loop() {
   uint32_t now = millis();
 
-  if (detector.update(analogRead(PIN_HALL), now)) {
-    hitCount++;
+  bool fireNow = detector.update(analogRead(PIN_HALL), now);
+  if (Serial.available() && Serial.read() == 'f') fireNow = true;
+
+  if (fireNow) {
     lastHitMs = now;
-    bool bonus = BONUS_EVERY > 0 && hitCount % BONUS_EVERY == 0;
-    playSound(bonus ? SND_BONUS : SND_COIN);
-    setMode(bonus ? BONUS : BURST, now);
-    Serial.print(F("HIT #"));
-    Serial.println(hitCount);
+    if (launcher.fire(now)) {
+      hitCount++;
+      bool bonus = BONUS_EVERY > 0 && hitCount % BONUS_EVERY == 0;
+      playSound(bonus ? SND_BONUS : SND_COIN);
+      setMode(bonus ? BONUS : BURST, now);
+      Serial.print(F("HIT #"));
+      Serial.println(hitCount);
+    }
   }
 
-#if DEBUG_HALL
+  bool magnet = camSensor.update(analogRead(PIN_CAM_HALL));
+  Launcher::State before = launcher.state();
+  motor(launcher.update(magnet, now));
+  if (launcher.state() == Launcher::FAULT && before != Launcher::FAULT) {
+    Serial.println(F("LAUNCHER FAULT: cam never reached its sensor. Jammed? "
+                     "Motor backwards (MOTOR_REVERSE)? Cam sensor wired?"));
+    setMode(FAULTED, now);
+  } else if (mode == FAULTED && launcher.state() != Launcher::FAULT) {
+    setMode(IDLE, now);
+  }
+
+#if DEBUG_HALL || DEBUG_CAM
   static uint32_t lastDbg = 0;
   if (now - lastDbg >= 50) {
     lastDbg = now;
-    Serial.print(F("raw="));
+#if DEBUG_HALL
+    Serial.print(F("hit raw="));
     Serial.print(analogRead(PIN_HALL));
     Serial.print(F(" base="));
-    Serial.println(detector.baseline());
+    Serial.print(detector.baseline());
+    Serial.print(' ');
+#endif
+#if DEBUG_CAM
+    Serial.print(F("cam raw="));
+    Serial.print(analogRead(PIN_CAM_HALL));
+    Serial.print(magnet ? F(" MAGNET") : F(" -"));
+    Serial.print(F(" state="));
+    Serial.print(launcher.state());
+#endif
+    Serial.println();
   }
 #endif
 
@@ -156,10 +212,11 @@ void loop() {
   if (now - lastFrame >= 20) {
     lastFrame = now;
     switch (mode) {
-      case IDLE:  frameIdle(now); break;
-      case BURST: frameBurst(now); break;
-      case BONUS: frameBonus(now); break;
-      case SLEEP: leds.clear(); break;
+      case IDLE:    frameIdle(now); break;
+      case BURST:   frameBurst(now); break;
+      case BONUS:   frameBonus(now); break;
+      case SLEEP:   leds.clear(); break;
+      case FAULTED: frameFault(now); break;
     }
     leds.show();
   }
